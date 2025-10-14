@@ -1,0 +1,4 @@
+# cellstring extension
+comment = 'A LineString looking data type, that represents XYZ tiles as strings.'
+default_version = '0.1'
+relocatable = true
