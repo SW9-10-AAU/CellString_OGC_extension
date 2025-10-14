@@ -1,4 +1,5 @@
 # cellstring extension
-comment = 'A LineString looking data type, that represents XYZ tiles as strings.'
-default_version = '0.1'
+comment = 'Extension to add cellstring type and OGC-style functions.'
+default_version = '0.0.1'
 relocatable = true
+requires = 'bigintarray'
