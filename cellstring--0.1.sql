@@ -1,7 +1,7 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION cellstring" to load this file. \quit
 
--- CREATE TYPE cellstring AS ( mmsi1 bigint, mmsi2 bigint );
+CREATE TYPE cellstring AS ( bigint[] );
 
 CREATE FUNCTION pair(text, text)
 RETURNS pair LANGUAGE SQL AS 'SELECT ROW($1, $2)::@extschema@.pair;';
@@ -18,3 +18,19 @@ CREATE FUNCTION pair_concat(pair, pair)
 RETURNS pair LANGUAGE SQL
 AS 'SELECT ROW($1.k OPERATOR(pg_catalog.||) $2.k,
                $1.v OPERATOR(pg_catalog.||) $2.v)::@extschema@.pair;';
+
+-- OGC functions
+CREATE OR REPLACE FUNCTION CST_Intersects(a bigint[], b bigint[])
+RETURNS boolean
+LANGUAGE SQL
+AS $$
+    SELECT a && b;  -- overlap operator from bigintarray
+$$;
+
+CREATE OR REPLACE FUNCTION CST_Intersection(a bigint[], b bigint[])
+RETURNS bigint[]
+LANGUAGE SQL
+AS $$
+    SELECT a & b;  -- intersection operator
+$$;
+
