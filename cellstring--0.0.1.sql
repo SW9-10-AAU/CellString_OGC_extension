@@ -1,76 +1,119 @@
--- complain if script is sourced in psql, rather than via CREATE EXTENSION
-\echo Use "CREATE EXTENSION cellstring" to load this file. \quit
+-- cellstring--0.0.1.sql
 
-DROP OPERATOR IF EXISTS && (cellstring, cellstring);
-DROP OPERATOR IF EXISTS & (cellstring, cellstring);
-DROP FUNCTION IF EXISTS CST_Intersects(cellstring, cellstring);
-DROP FUNCTION IF EXISTS CST_Intersection(cellstring, cellstring);
-DROP DOMAIN IF EXISTS cellstring;
+-- Drop any operators depending on cellstring first
+--DROP OPERATOR IF EXISTS @>~ (cellstring, cellstring) CASCADE;
+--DROP OPERATOR IF EXISTS && (cellstring, cellstring) CASCADE;
+--DROP OPERATOR IF EXISTS & (cellstring, cellstring) CASCADE;
+--DROP OPERATOR IF EXISTS | (cellstring, cellstring) CASCADE;
+--DROP OPERATOR IF EXISTS - (cellstring, cellstring) CASCADE;
 
-CREATE DOMAIN cellstring AS bigint[] NOT NULL;
+-- Drop functions
+--DROP FUNCTION IF EXISTS CST_Contains(cellstring, cellstring) CASCADE;
+--DROP FUNCTION IF EXISTS CST_Difference(cellstring, cellstring) CASCADE;
+--DROP FUNCTION IF EXISTS CST_Union(cellstring, cellstring) CASCADE;
+--DROP FUNCTION IF EXISTS CST_Intersection(cellstring, cellstring) CASCADE;
+--DROP FUNCTION IF EXISTS CST_Intersects(cellstring, cellstring) CASCADE;
+
+-- Finally drop the domain
+--DROP DOMAIN IF EXISTS cellstring CASCADE;
+
+-- Create domain; enforce no NULL elements
+CREATE DOMAIN cellstring AS bigint[]
+  NOT NULL
+  CHECK (
+    array_position(VALUE, NULL) IS NULL
+  );
 
 COMMENT ON DOMAIN cellstring
-    IS 'Alias domain for bigint[] representing “cells”';
+  IS 'Alias domain over bigint[] (no NULL elements) representing cell multi-sets';
 
-
--- OGC functions
-CREATE FUNCTION CST_Intersects(a cellstring, b cellstring)
-RETURNS boolean
-LANGUAGE SQL
-IMMUTABLE
+-- Functions
+CREATE OR REPLACE FUNCTION CST_Intersects(a cellstring, b cellstring)
+    RETURNS boolean
+    LANGUAGE SQL IMMUTABLE
 PARALLEL SAFE
 AS $$
-    SELECT (a::bigint[]) && (b::bigint[]);
+SELECT (a::bigint[]) OPERATOR(pg_catalog.&&) (b::bigint[]);
 $$;
 
 COMMENT ON FUNCTION CST_Intersects(cellstring, cellstring)
-    IS 'Return true if two cellstrings share at least one cell (overlap)';
+  IS 'Returns true if two cellstrings share at least one cell (overlap)';
 
-CREATE FUNCTION CST_Intersection(a cellstring, b cellstring)
-RETURNS cellstring
-LANGUAGE SQL
-IMMUTABLE
+CREATE OR REPLACE FUNCTION CST_Intersection(a cellstring, b cellstring)
+    RETURNS cellstring
+    LANGUAGE SQL IMMUTABLE
 PARALLEL SAFE
 AS $$
-    SELECT (a::bigint[]) & (b::bigint[])::bigint[];
+SELECT (a::bigint[]) & (b::bigint[]);
 $$;
 
 COMMENT ON FUNCTION CST_Intersection(cellstring, cellstring)
-    IS 'Return the array of common cells between two cellstrings';
+  IS 'Returns the intersection of two cellstrings (common cells)';
 
-CREATE FUNCTION CST_Contains(a cellstring, b cellstring)
-RETURNS boolean
-LANGUAGE SQL
-IMMUTABLE
+CREATE OR REPLACE FUNCTION CST_Union(a cellstring, b cellstring)
+    RETURNS cellstring
+    LANGUAGE SQL IMMUTABLE
 PARALLEL SAFE
 AS $$
-    SELECT (a::bigint[]) @> (b::bigint[])
-       AND (a::bigint[]) && (b::bigint[]);
+SELECT (a::bigint[]) | (b::bigint[]);
+$$;
+
+COMMENT ON FUNCTION CST_Union(cellstring, cellstring)
+  IS 'Returns the union of two cellstrings (all cells in either)';
+
+CREATE OR REPLACE FUNCTION CST_Difference(a cellstring, b cellstring)
+    RETURNS cellstring
+    LANGUAGE SQL IMMUTABLE
+PARALLEL SAFE
+AS $$
+SELECT ((a::bigint[]) - ((a::bigint[]) & (b::bigint[])))::bigint[];
+$$;
+
+COMMENT ON FUNCTION CST_Difference(cellstring, cellstring)
+  IS 'Returns cells in A that are not in B (A minus intersection)';
+
+CREATE OR REPLACE FUNCTION CST_Contains(a cellstring, b cellstring)
+    RETURNS boolean
+    LANGUAGE SQL IMMUTABLE
+PARALLEL SAFE
+AS $$
+SELECT (a::bigint[]) @> (b::bigint[])  -- all B in A
+    AND (a::bigint[]) OPERATOR(pg_catalog.&&) (b::bigint[])  -- at least overlap
 $$;
 
 COMMENT ON FUNCTION CST_Contains(cellstring, cellstring)
-    IS 'Return true if A contains B (all B’s cells are in A AND there is overlap)';
+  IS 'Returns true if A contains B (all B’s cells are in A and they overlap)';
 
--- You might also create an operator alias, e.g.
-CREATE OPERATOR @>~ (  -- custom name to avoid confusion
-    PROCEDURE = CST_Contains,
-    LEFTARG = cellstring,
-    RIGHTARG = cellstring
-);
-
--- Operator definitions
+-- Operators for main set ops
 CREATE OPERATOR && (
-    LEFTARG = cellstring,
-    RIGHTARG = cellstring,
-    PROCEDURE = CST_Intersects,
-    COMMUTATOR = &&,  -- symmetric
-    NEGATOR = =,      -- optional
-    RESTRICT = contsel,
-    JOIN = contjoinsel
+  PROCEDURE = CST_Intersects,
+  LEFTARG = cellstring,
+  RIGHTARG = cellstring,
+  COMMUTATOR = &&,
+  RESTRICT = contsel,
+  JOIN = contjoinsel
 );
 
 CREATE OPERATOR & (
-    LEFTARG = cellstring,
-    RIGHTARG = cellstring,
-    PROCEDURE = CST_Intersection
+  PROCEDURE = CST_Intersection,
+  LEFTARG = cellstring,
+  RIGHTARG = cellstring
+);
+
+CREATE OPERATOR | (
+  PROCEDURE = CST_Union,
+  LEFTARG = cellstring,
+  RIGHTARG = cellstring
+);
+
+CREATE OPERATOR - (
+  PROCEDURE = CST_Difference,
+  LEFTARG = cellstring,
+  RIGHTARG = cellstring
+);
+
+CREATE OPERATOR @>~ (
+  PROCEDURE = CST_Contains,
+  LEFTARG = cellstring,
+  RIGHTARG = cellstring
 );
