@@ -1,15 +1,15 @@
 # CellString PostgreSQL Extension
-The `cellstring` extension provides a custom domain and associated functions and operators to efficiently represent and manipulate multi-sets of cells as arrays of `bigint`. This extension is particularly useful for applications involving spatial data, genomic sequences, or any domain where multi-sets of cells need to be modeled and operated upon.
+The `cellstring` extension provides a custom domain and associated functions and operators to efficiently represent and manipulate arrays of cells of `bigint`. This extension is particularly useful for applications involving spatial data or any domain where multi-sets of cells need to be modeled and operated upon.
 
 ## Goal for CellString
-An alternative to LineString for representing AIS data. The CellString extension is designed to efficiently handle multi-sets of cells, allowing for operations such as intersection, union, and difference, which are common in spatial and genomic data analysis.
+An alternative to LineString for representing AIS data. The CellString extension is designed to efficiently handle arrays of cells, allowing for operations such as intersection, union, and difference, which are common in spatial analysis.
 
 ## Features
 ### Custom Domain
 `cellstring` is a user-defined domain over `bigint[]` that enforces non-null elements and provides a semantic abstraction for multi-sets of cells.
 
 ## Functions
-The CellString extension provides the following OGC functions:
+The `cellstring` extension provides the following OGC functions:
 
 | Function                                                   	| Description                                                            	   | Implemented? 	|
 |------------------------------------------------------------	|----------------------------------------------------------------------------|--------------	|
