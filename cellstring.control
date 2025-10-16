@@ -1,0 +1,5 @@
+# cellstring extension
+comment = 'Extension to add cellstring type and OGC-style functions.'
+default_version = '0.0.1'
+relocatable = true
+requires = 'bigintarray'
