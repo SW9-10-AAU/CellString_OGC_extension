@@ -62,3 +62,12 @@ $$;
 
 COMMENT ON FUNCTION CST_Contains(bigint[], bigint[])
   IS 'Returns true if A contains B (all B’s cells are in A and they overlap)';
+
+-- Aggregates
+CREATE AGGREGATE CST_Union_Agg(bigint[]) (
+    SFUNC = CST_Union,
+    STYPE = bigint[]
+);
+
+COMMENT ON AGGREGATE CST_Union_Agg(bigint[])
+  IS 'Aggregate to compute the union of multiple cellstrings';
