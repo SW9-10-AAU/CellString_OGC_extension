@@ -11,13 +11,14 @@ CellStrings are represented as `bigint[]`.
 ## Functions
 The `cellstring` extension provides the following OGC functions:
 
-| Function                                                   	| Description                                                            	    | Implemented? 	|
-|------------------------------------------------------------	|----------------------------------------------------------------------------   |--------------	|
-| CST_Intersects(a bigint[], b bigint[]) -> boolean      	    | Returns `TRUE` if two cellstrings share at least one cell (overlap)      	    | ✓             |
-| CST_Intersection(a bigint[], b bigint[]) -> bigint[] 	        | Returns the intersection of two cellstrings (common cells)             	    | ✓            	|
-| CST_Union(a bigint[], b bigint[]) -> bigint[]        	        | Returns the union of two cellstrings (all cells in either)             	    | ✓            	|
-| CST_Difference(a bigint[], b bigint[]) -> bigint[]   	        | Returns cells in A that are not in B (A minus intersection)                   | ✓            	|
-| CST_Contains(a bigint[], b bigint[]) -> boolean        	    | Returns `TRUE` if A contains B (all B’s cells are in A and they overlap)      | ✓            	|
+| Function                                                   	 | Description                                                            	 | Implemented? 	 |
+|--------------------------------------------------------------|--------------------------------------------------------------------------|----------------|
+| CST_Intersects(a bigint[], b bigint[]) -> boolean      	     | Returns `TRUE` if two cellstrings share at least one cell (overlap)      | ✓              |
+| CST_Intersection(a bigint[], b bigint[]) -> bigint[] 	       | Returns the intersection of two cellstrings (common cells)               | ✓            	 |
+| CST_Union(a bigint[], b bigint[]) -> bigint[]        	       | Returns the union of two cellstrings (all cells in either)             	 | ✓            	 |
+| CST_Difference(a bigint[], b bigint[]) -> bigint[]   	       | Returns cells in A that are not in B (A minus intersection)              | ✓            	 |
+| CST_Contains(a bigint[], b bigint[]) -> boolean        	     | Returns `TRUE` if A contains B (all B’s cells are in A and they overlap) | ✓            	 |
+| CST_Disjoint(a bigint[], b bigint[]) -> boolean              | Returns `TRUE` if they share no cell IDs                                 | ✓              |
 
 
 ## Installation

@@ -10,10 +10,11 @@
 -- Functions
 CREATE OR REPLACE FUNCTION CST_Intersects(cs_a bigint[], cs_b bigint[])
     RETURNS boolean
-    LANGUAGE SQL IMMUTABLE
-PARALLEL SAFE
+    LANGUAGE SQL
+    IMMUTABLE
+    PARALLEL SAFE
 AS $$
-SELECT cs_a && cs_b;
+    SELECT cs_a && cs_b;
 $$;
 
 COMMENT ON FUNCTION CST_Intersects(bigint[], bigint[])
@@ -21,10 +22,11 @@ COMMENT ON FUNCTION CST_Intersects(bigint[], bigint[])
 
 CREATE OR REPLACE FUNCTION CST_Intersection(cs_a bigint[], cs_b bigint[])
     RETURNS bigint[]
-    LANGUAGE SQL IMMUTABLE
-PARALLEL SAFE
+    LANGUAGE SQL
+    IMMUTABLE
+    PARALLEL SAFE
 AS $$
-SELECT cs_a & cs_b;
+    SELECT cs_a & cs_b;
 $$;
 
 COMMENT ON FUNCTION CST_Intersection(bigint[], bigint[])
@@ -32,10 +34,11 @@ COMMENT ON FUNCTION CST_Intersection(bigint[], bigint[])
 
 CREATE OR REPLACE FUNCTION CST_Union(cs_a bigint[], cs_b bigint[])
     RETURNS bigint[]
-    LANGUAGE SQL IMMUTABLE
-PARALLEL SAFE
+    LANGUAGE SQL
+    IMMUTABLE
+    PARALLEL SAFE
 AS $$
-SELECT cs_a | cs_b;
+    SELECT cs_a | cs_b;
 $$;
 
 COMMENT ON FUNCTION CST_Union(bigint[], bigint[])
@@ -43,10 +46,11 @@ COMMENT ON FUNCTION CST_Union(bigint[], bigint[])
 
 CREATE OR REPLACE FUNCTION CST_Difference(cs_a bigint[], cs_b bigint[])
     RETURNS bigint[]
-    LANGUAGE SQL IMMUTABLE
-PARALLEL SAFE
+    LANGUAGE SQL
+    IMMUTABLE
+    PARALLEL SAFE
 AS $$
-SELECT cs_a - ((cs_a) & (cs_b));
+    SELECT cs_a - ((cs_a) & (cs_b));
 $$;
 
 COMMENT ON FUNCTION CST_Difference(bigint[], bigint[])
@@ -54,11 +58,24 @@ COMMENT ON FUNCTION CST_Difference(bigint[], bigint[])
 
 CREATE OR REPLACE FUNCTION CST_Contains(cs_a bigint[], cs_b bigint[])
     RETURNS boolean
-    LANGUAGE SQL IMMUTABLE
-PARALLEL SAFE
+    LANGUAGE SQL
+   IMMUTABLE
+    PARALLEL SAFE
 AS $$
-SELECT (cs_a @> cs_b AND cs_a && cs_b)
+    SELECT (cs_a @> cs_b AND cs_a && cs_b)
 $$;
 
 COMMENT ON FUNCTION CST_Contains(bigint[], bigint[])
   IS 'Returns true if A contains B (all B’s cells are in A and they overlap)';
+
+CREATE OR REPLACE FUNCTION CST_Disjoint(cs_a bigint[], cs_b bigint[])
+  RETURNS boolean
+  LANGUAGE SQL
+  IMMUTABLE
+  PARALLEL SAFE
+AS $$
+    SELECT NOT (cs_a && cs_b);
+$$;
+
+COMMENT ON FUNCTION CST_Disjoint(bigint[], bigint[])
+  IS 'Returns true if two cellstrings share no cells (i.e., disjoint: no overlap)';
