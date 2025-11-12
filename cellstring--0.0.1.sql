@@ -79,3 +79,12 @@ $$;
 
 COMMENT ON FUNCTION CST_Disjoint(bigint[], bigint[])
   IS 'Returns true if two cellstrings share no cells (i.e., disjoint: no overlap)';
+  
+-- Aggregates
+CREATE AGGREGATE CST_Union_Agg(bigint[]) (
+    SFUNC = CST_Union,
+    STYPE = bigint[]
+);
+
+COMMENT ON AGGREGATE CST_Union_Agg(bigint[])
+  IS 'Aggregate to compute the union of multiple cellstrings';
