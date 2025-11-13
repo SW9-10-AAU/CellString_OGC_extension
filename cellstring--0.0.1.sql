@@ -81,7 +81,7 @@ COMMENT ON FUNCTION CST_Disjoint(bigint[], bigint[])
   IS 'Returns true if two cellstrings share no cells (i.e., disjoint: no overlap)';
   
 -- Aggregates
-CREATE AGGREGATE CST_Union_Agg(bigint[]) (
+CREATE OR REPLACE AGGREGATE CST_Union_Agg(bigint[]) (
     SFUNC = CST_Union,
     STYPE = bigint[]
 );
@@ -198,3 +198,68 @@ END;
 $$;
 
 ALTER FUNCTION draw_cellstring(BIGINT[], INTEGER) OWNER TO postgres;
+
+
+CREATE OR REPLACE FUNCTION CST_CellAsPoint(
+    cell_id BIGINT,
+    zoom INTEGER
+)
+    RETURNS geometry(Point, 4326)
+    LANGUAGE plpgsql
+    IMMUTABLE
+    PARALLEL SAFE
+AS $$
+DECLARE
+    tile_x INT;
+    tile_y INT;
+BEGIN
+    SELECT x, y INTO tile_x, tile_y
+    FROM decode_cellid_to_tile_xy(cell_id, zoom);
+
+    RETURN ST_Centroid(ST_Transform(ST_TileEnvelope(zoom, tile_x, tile_y), 4326));
+END;
+$$;
+
+COMMENT ON FUNCTION CST_CellAsPoint(BIGINT, INTEGER)
+  IS 'Returns the center point (geometry) of a tile for a given cell ID and zoom level.';
+
+
+CREATE OR REPLACE FUNCTION CST_AsLineString(
+    cell_ids BIGINT[],
+    zoom INTEGER
+)
+RETURNS geometry(LineString, 4326)
+    LANGUAGE sql
+    IMMUTABLE
+    PARALLEL SAFE
+AS $$
+    SELECT ST_MakeLine(points.geom)
+    FROM (
+        SELECT CST_CellAsPoint(t.id, zoom) AS geom
+        FROM unnest(cell_ids) WITH ORDINALITY AS t(id, ord)
+        ORDER BY t.ord
+    ) AS points;
+$$;
+
+COMMENT ON FUNCTION CST_AsLineString(BIGINT[], INTEGER)
+  IS 'Builds a LineString trajectory from the center points of the cells in a CellString.';
+
+
+CREATE OR REPLACE FUNCTION CST_HausdorffDistance(
+    cell_ids BIGINT[],
+    original_geom GEOMETRY,
+    zoom INTEGER
+)
+RETURNS DOUBLE PRECISION
+    LANGUAGE sql
+    IMMUTABLE
+    PARALLEL SAFE
+AS $$
+    SELECT ST_HausdorffDistance(
+        original_geom,
+        CST_AsLineString(cell_ids, zoom)
+    );
+$$;
+
+COMMENT ON FUNCTION CST_HausdorffDistance(BIGINT[], GEOMETRY, INTEGER)
+  IS 'Computes the Hausdorff distance between an original LineString and its CellString representation at a given zoom.';
