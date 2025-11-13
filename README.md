@@ -5,20 +5,21 @@ The `cellstring` extension provides functions to manipulate `bigint[]`.
 An alternative to LineString for representing AIS data. The CellString extension is designed to efficiently handle arrays of cells, allowing for operations such as intersection, union, and difference, which are common in spatial analysis.
 
 ## Features
-### Custom Domain
-CellStrings are represented as `bigint[]`.
 
 ## Functions
 The `cellstring` extension provides the following OGC functions:
 
-| Function                                                   	 | Description                                                            	 | Implemented? 	 |
-|--------------------------------------------------------------|--------------------------------------------------------------------------|----------------|
-| CST_Intersects(a bigint[], b bigint[]) -> boolean      	     | Returns `TRUE` if two cellstrings share at least one cell (overlap)      | ✓              |
-| CST_Intersection(a bigint[], b bigint[]) -> bigint[] 	       | Returns the intersection of two cellstrings (common cells)               | ✓            	 |
-| CST_Union(a bigint[], b bigint[]) -> bigint[]        	       | Returns the union of two cellstrings (all cells in either)             	 | ✓            	 |
-| CST_Difference(a bigint[], b bigint[]) -> bigint[]   	       | Returns cells in A that are not in B (A minus intersection)              | ✓            	 |
-| CST_Contains(a bigint[], b bigint[]) -> boolean        	     | Returns `TRUE` if A contains B (all B’s cells are in A and they overlap) | ✓            	 |
-| CST_Disjoint(a bigint[], b bigint[]) -> boolean              | Returns `TRUE` if they share no cell IDs                                 | ✓              |
+| Function                                                   	                               | Description                                                            	                                         | Implemented? 	 |
+|--------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|----------------|
+| CST_Intersects(a bigint[], b bigint[]) -> boolean      	                                   | Returns `TRUE` if two cellstrings share at least one cell (overlap)                                              | ✓              |
+| CST_Intersection(a bigint[], b bigint[]) -> bigint[] 	                                     | Returns the intersection of two cellstrings (common cells)                                                       | ✓            	 |
+| CST_Union(a bigint[], b bigint[]) -> bigint[]        	                                     | Returns the union of two cellstrings (all cells in either)             	                                         | ✓            	 |
+| CST_Difference(a bigint[], b bigint[]) -> bigint[]   	                                     | Returns cells in A that are not in B (A minus intersection)                                                      | ✓            	 |
+| CST_Contains(a bigint[], b bigint[]) -> boolean        	                                   | Returns `TRUE` if A contains B (all B’s cells are in A and they overlap)                                         | ✓            	 |
+| CST_Disjoint(a bigint[], b bigint[]) -> boolean                                            | Returns `TRUE` if they share no cell IDs                                                                         | ✓              |
+| CST_CellAsPoint(cell_id bigint, zoom int) -> geom(Point, 4326)                             | Returns the center point (geometry) of a tile for a given cell ID and zoom level.                                | ✓              |
+| CST_AsLineString(cell_ids bigint[], zoom int) -> geom(LineString, 4326)                    | Returns a built LineString trajectory from the center points of the cells in a CellString.                       | ✓              |
+| CST_HausdorffDistance(cell_ids bigint[], original_geom geom, zoom int) -> double precision | Computes the Hausdorff distance between a baseline LineString and its CellString representation at a given zoom. | ✓              |
 
 
 ## Installation
