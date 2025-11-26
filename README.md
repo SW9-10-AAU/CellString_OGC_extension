@@ -16,9 +16,10 @@ The `cellstring` extension provides the following OGC functions:
 | **CST_Contains(a bigint[], b bigint[]) → boolean**                                           | Returns `TRUE` if A fully contains B (all of B’s cells are present in A).                                         | ✓            |
 | **CST_Disjoint(a bigint[], b bigint[]) → boolean**                                           | Returns `TRUE` if the two cellstrings share no common cell IDs.                                                   | ✓            |
 
-Furthermore, the extension includes functions for converting CellStrings to geometries and calculating distances:
+Furthermore, the extension includes the following functions.
 | Function                                                                                     | Description                                                                                                       | Implemented? |
 |----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
+| **CST_Coverage(cs_a bigint[], cs_b bigint[]) → numeric**                                     | Returns the coverage percentage of cellstring A over cellstring B.                                                | ✓            |
 | **CST_TileXY(cell_id bigint, zoom int) → (tile_x int, tile_y int)**                          | Decodes a cell ID into tile X/Y coordinates for the given zoom level.                                             | ✓            |
 | **CST_CellAsPolygon(cell_id bigint, zoom int) → geometry(Polygon, 4326)**                    | Converts a single cell ID into its polygon geometry using `ST_TileEnvelope`.                                      | ✓            |
 | **CST_AsMultiPolygon(cellstring bigint[], zoom int) → geometry(MultiPolygon, 4326)**         | Converts a CellString into a MultiPolygon by unioning all cell polygons.                                          | ✓            |

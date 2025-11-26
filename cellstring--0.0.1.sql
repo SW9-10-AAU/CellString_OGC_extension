@@ -14,6 +14,9 @@
 -- DROP FUNCTION IF EXISTS CST_Disjoint(bigint[], bigint[]) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_Disjoint(int[], int[]) CASCADE;
 
+-- DROP FUNCTION IF EXISTS CST_Coverage(bigint[], bigint[]) CASCADE;
+
+
 -- DROP FUNCTION IF EXISTS CST_TileXY(bigint, integer) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_CellAsPolygon(bigint, integer) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_AsMultiPolygon(bigint[], integer) CASCADE;
@@ -199,6 +202,24 @@ CREATE AGGREGATE CST_Union_Agg(int[]) (
 COMMENT ON AGGREGATE CST_Union_Agg(int[])
   IS 'Aggregate to compute the union of multiple CellStrings [int array version]';
 
+
+CREATE OR REPLACE FUNCTION CST_Coverage(cs_a bigint[], cs_b bigint[])
+RETURNS numeric
+LANGUAGE SQL
+AS $$
+    SELECT
+        CASE
+            WHEN cardinality(cs_b) = 0 THEN 0
+            ELSE ROUND(
+                (cardinality(CST_Intersection(cs_a, cs_b))::numeric
+                 / cardinality(cs_b)) * 100,
+                2
+            )
+        END AS coverage_percent;
+$$;
+
+COMMENT ON FUNCTION CST_Coverage(bigint[], bigint[])
+  IS 'Returns the coverage percentage of cellstring A over cellstring B.';
 
 
 
