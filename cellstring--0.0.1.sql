@@ -1,29 +1,31 @@
 -- cellstring--0.0.1.sql
 
--- Drop functions if exist (BIGINT array versions)
+----- Drop functions -----
 -- DROP FUNCTION IF EXISTS CST_Intersects(bigint[], bigint[]) CASCADE;
--- DROP FUNCTION IF EXISTS CST_Intersection(bigint[], bigint[]) CASCADE;
--- DROP FUNCTION IF EXISTS CST_Union(bigint[], bigint[]) CASCADE;
--- DROP FUNCTION IF EXISTS CST_Difference(bigint[], bigint[]) CASCADE;
--- DROP FUNCTION IF EXISTS CST_Contains(bigint[], bigint[]) CASCADE;
--- DROP FUNCTION IF EXISTS CST_Disjoint(bigint[], bigint[]) CASCADE;
-
--- Drop aggregates if exist (BIGINT array version)
--- DROP AGGREGATE IF EXISTS CST_Union_Agg(bigint[]) CASCADE;
-
--- Drop functions if exist (INT array versions)
 -- DROP FUNCTION IF EXISTS CST_Intersects(int[], int[]) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_Intersection(bigint[], bigint[]) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_Intersection(int[], int[]) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_Union(bigint[], bigint[]) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_Union(int[], int[]) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_Difference(bigint[], bigint[]) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_Difference(int[], int[]) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_Contains(bigint[], bigint[]) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_Contains(int[], int[]) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_Disjoint(bigint[], bigint[]) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_Disjoint(int[], int[]) CASCADE;
 
--- Drop aggregates if exist (INT array version)
+-- DROP FUNCTION IF EXISTS CST_TileXY(bigint, integer) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_CellAsPolygon(bigint, integer) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_AsMultiPolygon(bigint[], integer) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_CellAsPoint(bigint, integer) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_AsLineString(bigint[], integer) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_HausdorffDistance(bigint[], geometry, integer) CASCADE;
+
+----- Drop aggregates -----
+-- DROP AGGREGATE IF EXISTS CST_Union_Agg(bigint[]) CASCADE;
 -- DROP AGGREGATE IF EXISTS CST_Union_Agg(int[]) CASCADE;
 
-
------------------------- Functions for cellstring operations (bigint[] inputs) -----------------------------
+------------------------ Functions for CellString operations (bigint[] inputs) -----------------------------
 CREATE OR REPLACE FUNCTION CST_Intersects(cs_a bigint[], cs_b bigint[])
     RETURNS boolean
     LANGUAGE SQL
@@ -34,7 +36,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION CST_Intersects(bigint[], bigint[])
-  IS 'Returns true if two cellstrings share at least one cell (overlap)';
+  IS 'Returns true if two CellStrings share at least one cell (overlap)';
 
 CREATE OR REPLACE FUNCTION CST_Intersection(cs_a bigint[], cs_b bigint[])
     RETURNS bigint[]
@@ -46,7 +48,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION CST_Intersection(bigint[], bigint[])
-  IS 'Returns the intersection of two cellstrings (common cells)';
+  IS 'Returns the intersection of two CellStrings (common cells)';
 
 CREATE OR REPLACE FUNCTION CST_Union(cs_a bigint[], cs_b bigint[])
     RETURNS bigint[]
@@ -58,7 +60,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION CST_Union(bigint[], bigint[])
-  IS 'Returns the union of two cellstrings (all cells in either)';
+  IS 'Returns the union of two CellStrings (all cells in either)';
 
 CREATE OR REPLACE FUNCTION CST_Difference(cs_a bigint[], cs_b bigint[])
     RETURNS bigint[]
@@ -94,7 +96,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION CST_Disjoint(bigint[], bigint[])
-  IS 'Returns true if two cellstrings share no cells (i.e., disjoint: no overlap)';
+  IS 'Returns true if two CellStrings share no cells (i.e., disjoint: no overlap)';
   
 -- Aggregates
 CREATE OR REPLACE AGGREGATE CST_Union_Agg(bigint[]) (
@@ -103,10 +105,10 @@ CREATE OR REPLACE AGGREGATE CST_Union_Agg(bigint[]) (
 );
 
 COMMENT ON AGGREGATE CST_Union_Agg(bigint[])
-  IS 'Aggregate to compute the union of multiple cellstrings';
+  IS 'Aggregate to compute the union of multiple CellStrings';
   
 
------------------------- Functions for cellstring operations (int[] inputs) -----------------------------
+------------------------ Functions for CellString operations (int[] inputs) -----------------------------
 
 -- CST_Intersects
 CREATE OR REPLACE FUNCTION CST_Intersects(cs_a int[], cs_b int[])
@@ -119,7 +121,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION CST_Intersects(int[], int[])
-  IS 'Returns true if two cellstrings share at least one cell (overlap) [int array version]';
+  IS 'Returns true if two CellStrings share at least one cell (overlap) [int array version]';
 
 -- CST_Intersection
 CREATE OR REPLACE FUNCTION CST_Intersection(cs_a int[], cs_b int[])
@@ -132,7 +134,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION CST_Intersection(int[], int[])
-  IS 'Returns the intersection of two cellstrings (common cells) [int array version]';
+  IS 'Returns the intersection of two CellStrings (common cells) [int array version]';
 
 -- CST_Union
 CREATE OR REPLACE FUNCTION CST_Union(cs_a int[], cs_b int[])
@@ -145,7 +147,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION CST_Union(int[], int[])
-  IS 'Returns the union of two cellstrings (all cells in either) [int array version]';
+  IS 'Returns the union of two CellStrings (all cells in either) [int array version]';
 
 -- CST_Difference
 CREATE OR REPLACE FUNCTION CST_Difference(cs_a int[], cs_b int[])
@@ -184,7 +186,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION CST_Disjoint(int[], int[])
-  IS 'Returns true if two cellstrings share no cells (i.e., disjoint: no overlap) [int array version]';
+  IS 'Returns true if two CellStrings share no cells (i.e., disjoint: no overlap) [int array version]';
 
 -- Aggregate for int[]
 DROP AGGREGATE IF EXISTS CST_Union_Agg(int[]) CASCADE;
@@ -195,31 +197,24 @@ CREATE AGGREGATE CST_Union_Agg(int[]) (
 );
 
 COMMENT ON AGGREGATE CST_Union_Agg(int[])
-  IS 'Aggregate to compute the union of multiple cellstrings [int array version]';
+  IS 'Aggregate to compute the union of multiple CellStrings [int array version]';
 
 
 
 
--------------------------Visualisation of cellstrings with respect to zoom levels---------------------------
--- ==========================================================
--- Drop existing functions (safe for reloads)
--- ==========================================================
--- DROP FUNCTION IF EXISTS decode_cellid_to_tile_xy(bigint, integer) CASCADE;
--- DROP FUNCTION IF EXISTS cellid_to_polygon(bigint, integer)        CASCADE;
--- DROP FUNCTION IF EXISTS cellids_to_polygons(bigint[], integer)    CASCADE;
-
+-------------------------Visualisation of CellStrings with respect to zoom levels---------------------------
 
 -- ==========================================================
--- Function: decode_cellid_to_tile_xy(cell_id bigint, zoom int)
+-- Function: CST_TileXY(cell_id bigint, zoom int)
 -- Purpose : Decode a cell ID into tile X/Y coordinates based on zoom level
 -- ==========================================================
-CREATE OR REPLACE FUNCTION decode_cellid_to_tile_xy(
+CREATE OR REPLACE FUNCTION CST_TileXY(
     cell_id BIGINT,
-    zoom     INTEGER
+    zoom    INTEGER
 )
 RETURNS TABLE (
-    x INTEGER,
-    y INTEGER
+    tile_x INTEGER,
+    tile_y INTEGER
 )
   IMMUTABLE
   LANGUAGE plpgsql
@@ -244,53 +239,52 @@ BEGIN
 
     RETURN QUERY
     SELECT 
-        ((cell_id - base_offset) / multiplier)::INT AS x,
-        ((cell_id - base_offset) % multiplier)::INT AS y;
+        ((cell_id - base_offset) / multiplier)::INT AS tile_x,
+        ((cell_id - base_offset) % multiplier)::INT AS tile_y;
 END;
 $$;
 
-ALTER FUNCTION decode_cellid_to_tile_xy(BIGINT, INTEGER) OWNER TO postgres;
-
+ALTER FUNCTION CST_TileXY(BIGINT, INTEGER) OWNER TO postgres;
 
 
 -- ==========================================================
--- Function: cellid_to_polygon(cell_id bigint, zoom int)
+-- Function: CST_CellAsPolygon(cell_id bigint, zoom int)
 -- Purpose : Convert a single cell ID to its polygon geometry
 -- ==========================================================
-CREATE OR REPLACE FUNCTION draw_cell(
+CREATE OR REPLACE FUNCTION CST_CellAsPolygon(
     cell_id BIGINT,
-    zoom     INTEGER
+    zoom    INTEGER
 )
-  RETURNS geometry
+  RETURNS geometry(Polygon, 4326)
   IMMUTABLE
   LANGUAGE plpgsql
 AS
 $$
 DECLARE
-    px INT;
-    py INT;
+    tile_x INT;
+    tile_y INT;
 BEGIN
-    SELECT d.x, d.y
-      INTO px, py
-      FROM decode_cellid_to_tile_xy(cell_id, zoom) AS d;
+    SELECT coords.tile_x, coords.tile_y
+      INTO tile_x, tile_y
+      FROM CST_TileXY(cell_id, zoom) AS coords;
 
-    RETURN ST_Transform(ST_TileEnvelope(zoom, px, py), 4326);
+    RETURN ST_Transform(ST_TileEnvelope(zoom, tile_x, tile_y), 4326);
 END;
 $$;
 
-ALTER FUNCTION draw_cell(BIGINT, INTEGER) OWNER TO postgres;
+ALTER FUNCTION CST_CellAsPolygon(BIGINT, INTEGER) OWNER TO postgres;
 
 
 
 -- ==========================================================
--- Function: cellids_to_polygons(cell_ids bigint[], zoom int)
+-- Function: CST_AsMultiPolygon(cellstring bigint[], zoom int)
 -- Purpose : Combine multiple cell polygons into a MultiPolygon
 -- ==========================================================
-CREATE OR REPLACE FUNCTION draw_cellstring(
-    cell_ids BIGINT[],
-    zoom     INTEGER
+CREATE OR REPLACE FUNCTION CST_AsMultiPolygon(
+    cellstring BIGINT[],
+    zoom       INTEGER
 )
-  RETURNS geometry
+  RETURNS geometry(MultiPolygon, 4326)
   IMMUTABLE
   LANGUAGE plpgsql
 AS
@@ -298,43 +292,34 @@ $$
 BEGIN
     RETURN (
         SELECT ST_Union(cell_geom)
-          FROM UNNEST(cell_ids) AS cid
+          FROM UNNEST(cellstring) AS cell_id
           CROSS JOIN LATERAL (
-              SELECT draw_cell(cid, zoom) AS cell_geom
+              SELECT CST_CellAsPolygon(cell_id, zoom) AS cell_geom
           ) AS f
     );
 END;
 $$;
 
-ALTER FUNCTION draw_cellstring(BIGINT[], INTEGER) OWNER TO postgres;
+ALTER FUNCTION CST_AsMultiPolygon(BIGINT[], INTEGER) OWNER TO postgres;
 
 
 CREATE OR REPLACE FUNCTION CST_CellAsPoint(
     cell_id BIGINT,
     zoom INTEGER
 )
-    RETURNS geometry(Point, 4326)
-    LANGUAGE plpgsql
-    IMMUTABLE
-    PARALLEL SAFE
+RETURNS geometry(Point, 4326)
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
 AS $$
-DECLARE
-    tile_x INT;
-    tile_y INT;
-BEGIN
-    SELECT x, y INTO tile_x, tile_y
-    FROM decode_cellid_to_tile_xy(cell_id, zoom);
-
-    RETURN ST_Centroid(ST_Transform(ST_TileEnvelope(zoom, tile_x, tile_y), 4326));
-END;
+    SELECT ST_Centroid(CST_CellAsPolygon(cell_id, zoom));
 $$;
-
 COMMENT ON FUNCTION CST_CellAsPoint(BIGINT, INTEGER)
   IS 'Returns the center point (geometry) of a tile for a given cell ID and zoom level.';
 
 
 CREATE OR REPLACE FUNCTION CST_AsLineString(
-    cell_ids BIGINT[],
+    cellstring BIGINT[],
     zoom INTEGER
 )
 RETURNS geometry(LineString, 4326)
@@ -345,7 +330,7 @@ AS $$
     SELECT ST_MakeLine(points.geom)
     FROM (
         SELECT CST_CellAsPoint(t.id, zoom) AS geom
-        FROM unnest(cell_ids) WITH ORDINALITY AS t(id, ord)
+        FROM unnest(cellstring) WITH ORDINALITY AS t(id, ord)
         ORDER BY t.ord
     ) AS points;
 $$;
@@ -355,7 +340,7 @@ COMMENT ON FUNCTION CST_AsLineString(BIGINT[], INTEGER)
 
 
 CREATE OR REPLACE FUNCTION CST_HausdorffDistance(
-    cell_ids BIGINT[],
+    cellstring BIGINT[],
     original_geom GEOMETRY,
     zoom INTEGER
 )
@@ -366,7 +351,7 @@ RETURNS DOUBLE PRECISION
 AS $$
     SELECT ST_HausdorffDistance(
         original_geom,
-        CST_AsLineString(cell_ids, zoom)
+        CST_AsLineString(cellstring, zoom)
     );
 $$;
 
