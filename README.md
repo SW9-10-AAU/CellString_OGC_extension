@@ -4,22 +4,28 @@ The `cellstring` extension provides functions to manipulate `bigint[]`.
 ## Goal for CellString
 An alternative to LineString for representing AIS data. The CellString extension is designed to efficiently handle arrays of cells, allowing for operations such as intersection, union, and difference, which are common in spatial analysis.
 
-## Features
-
 ## Functions
 The `cellstring` extension provides the following OGC functions:
 
-| Function                                                   	                               | Description                                                            	                                         | Implemented? 	 |
-|--------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|----------------|
-| CST_Intersects(a bigint[], b bigint[]) -> boolean      	                                   | Returns `TRUE` if two cellstrings share at least one cell (overlap)                                              | ✓              |
-| CST_Intersection(a bigint[], b bigint[]) -> bigint[] 	                                     | Returns the intersection of two cellstrings (common cells)                                                       | ✓            	 |
-| CST_Union(a bigint[], b bigint[]) -> bigint[]        	                                     | Returns the union of two cellstrings (all cells in either)             	                                         | ✓            	 |
-| CST_Difference(a bigint[], b bigint[]) -> bigint[]   	                                     | Returns cells in A that are not in B (A minus intersection)                                                      | ✓            	 |
-| CST_Contains(a bigint[], b bigint[]) -> boolean        	                                   | Returns `TRUE` if A contains B (all B’s cells are in A and they overlap)                                         | ✓            	 |
-| CST_Disjoint(a bigint[], b bigint[]) -> boolean                                            | Returns `TRUE` if they share no cell IDs                                                                         | ✓              |
-| CST_CellAsPoint(cell_id bigint, zoom int) -> geom(Point, 4326)                             | Returns the center point (geometry) of a tile for a given cell ID and zoom level.                                | ✓              |
-| CST_AsLineString(cell_ids bigint[], zoom int) -> geom(LineString, 4326)                    | Returns a built LineString trajectory from the center points of the cells in a CellString.                       | ✓              |
-| CST_HausdorffDistance(cell_ids bigint[], original_geom geom, zoom int) -> double precision | Computes the Hausdorff distance between a baseline LineString and its CellString representation at a given zoom. | ✓              |
+| OGC Function                                                                                 | Description                                                                                                       | Implemented? |
+|----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
+| **CST_Intersects(a bigint[], b bigint[]) → boolean**                                         | Returns `TRUE` if two cellstrings share at least one cell (overlap).                                              | ✓            |
+| **CST_Intersection(a bigint[], b bigint[]) → bigint[]**                                      | Returns the intersection of two cellstrings (common cells).                                                       | ✓            |
+| **CST_Union(a bigint[], b bigint[]) → bigint[]**                                             | Returns the union of two cellstrings (all cells contained in either).                                             | ✓            |
+| **CST_Difference(a bigint[], b bigint[]) → bigint[]**                                        | Returns cells in A that are not in B (A minus intersection).                                                      | ✓            |
+| **CST_Contains(a bigint[], b bigint[]) → boolean**                                           | Returns `TRUE` if A fully contains B (all of B’s cells are present in A).                                         | ✓            |
+| **CST_Disjoint(a bigint[], b bigint[]) → boolean**                                           | Returns `TRUE` if the two cellstrings share no common cell IDs.                                                   | ✓            |
+
+Furthermore, the extension includes functions for converting CellStrings to geometries and calculating distances:
+| Function                                                                                     | Description                                                                                                       | Implemented? |
+|----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
+| **CST_TileXY(cell_id bigint, zoom int) → (tile_x int, tile_y int)**                          | Decodes a cell ID into tile X/Y coordinates for the given zoom level.                                             | ✓            |
+| **CST_CellAsPolygon(cell_id bigint, zoom int) → geometry(Polygon, 4326)**                    | Converts a single cell ID into its polygon geometry using `ST_TileEnvelope`.                                      | ✓            |
+| **CST_AsMultiPolygon(cellstring bigint[], zoom int) → geometry(MultiPolygon, 4326)**         | Converts a CellString into a MultiPolygon by unioning all cell polygons.                                          | ✓            |
+| **CST_CellAsPoint(cell_id bigint, zoom int) → geometry(Point, 4326)**                        | Returns the geographic center point of a tile defined by a cell ID and zoom level.                                | ✓            |
+| **CST_AsLineString(cellstring bigint[], zoom int) → geometry(LineString, 4326)**             | Builds a LineString trajectory from the center points of the cells in a CellString, preserving order.             | ✓            |
+| **CST_HausdorffDistance(cellstring bigint[], original_geom geometry, zoom int) → double**    | Computes the Hausdorff distance between a baseline LineString and its CellString representation at a given zoom.  | ✓            |
+
 
 
 ## Installation
