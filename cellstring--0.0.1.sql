@@ -14,6 +14,10 @@
 -- DROP FUNCTION IF EXISTS CST_Disjoint(bigint[], bigint[]) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_Disjoint(int[], int[]) CASCADE;
 
+-- DROP FUNCTION IF EXISTS CST_Coverage(bigint[], bigint[]) CASCADE;
+-- DROP FUNCTION IF EXISTS CST_Coverage_ByMMSI(regclass, integer, bigint[]) CASCADE;
+
+
 -- DROP FUNCTION IF EXISTS CST_TileXY(bigint, integer) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_CellAsPolygon(bigint, integer) CASCADE;
 -- DROP FUNCTION IF EXISTS CST_AsMultiPolygon(bigint[], integer) CASCADE;
@@ -200,6 +204,91 @@ COMMENT ON AGGREGATE CST_Union_Agg(int[])
   IS 'Aggregate to compute the union of multiple CellStrings [int array version]';
 
 
+CREATE OR REPLACE FUNCTION CST_Coverage(cs_a bigint[], cs_b bigint[])
+RETURNS numeric
+LANGUAGE SQL
+AS $$
+    SELECT
+        CASE
+            WHEN cardinality(cs_b) = 0 THEN 0
+            ELSE ROUND(
+                (cardinality(CST_Intersection(cs_a, cs_b))::numeric
+                 / cardinality(cs_b)) * 100,
+                2
+            )
+        END AS coverage_percent;
+$$;
+
+COMMENT ON FUNCTION CST_Coverage(bigint[], bigint[])
+  IS 'Returns the coverage percentage of cellstring A over cellstring B.';
+
+
+
+CREATE OR REPLACE FUNCTION CST_Coverage_ByMMSI(
+    traj_table REGCLASS,
+    zoom INTEGER,
+    area_cellstring BIGINT[]
+)
+RETURNS TABLE (
+    mmsi BIGINT,
+    coverage_percent NUMERIC
+)
+LANGUAGE plpgsql
+STABLE
+AS
+$$
+DECLARE
+    cell_col TEXT;
+    sql TEXT;
+BEGIN
+    IF zoom = 13 THEN
+        cell_col := 'cellstring_z13';
+    ELSIF zoom = 17 THEN
+        cell_col := 'cellstring_z17';
+    ELSIF zoom = 21 THEN
+        cell_col := 'cellstring_z21';
+    ELSE
+        RAISE EXCEPTION 'Unsupported zoom level: % (supported: 13, 17, 21)', zoom;
+    END IF;
+
+    IF area_cellstring IS NULL THEN
+        RAISE EXCEPTION 'area_cellstring must not be NULL';
+    END IF;
+
+    sql := format($f$
+        WITH area AS (
+            SELECT %L::bigint[] AS cellstring
+        ),
+        mmsi_union AS (
+            SELECT
+                t.mmsi,
+                CST_Union_Agg(t.%I) AS union_cells
+            FROM %s AS t
+            CROSS JOIN area
+            WHERE CST_Intersects(t.%I, area.cellstring)
+            GROUP BY t.mmsi
+        ),
+        coverage AS (
+            SELECT
+                mu.mmsi,
+                CST_Coverage(
+                    CST_Intersection(mu.union_cells, area.cellstring),
+                    area.cellstring
+                ) AS coverage_percent
+            FROM mmsi_union AS mu
+            CROSS JOIN area
+        )
+        SELECT mmsi, coverage_percent
+        FROM coverage
+        ORDER BY coverage_percent DESC
+    $f$, area_cellstring, cell_col, traj_table, cell_col);
+
+    RETURN QUERY EXECUTE sql;
+END;
+$$;
+
+COMMENT ON FUNCTION CST_Coverage_ByMMSI(REGCLASS, INTEGER, BIGINT[])
+  IS 'Returns coverage percentage per MMSI for the given trajectory table, zoom (13/17/21), and area cellstring.';
 
 
 -------------------------Visualisation of CellStrings with respect to zoom levels---------------------------

@@ -16,15 +16,17 @@ The `cellstring` extension provides the following OGC functions:
 | **CST_Contains(a bigint[], b bigint[]) → boolean**                                           | Returns `TRUE` if A fully contains B (all of B’s cells are present in A).                                         | ✓            |
 | **CST_Disjoint(a bigint[], b bigint[]) → boolean**                                           | Returns `TRUE` if the two cellstrings share no common cell IDs.                                                   | ✓            |
 
-Furthermore, the extension includes functions for converting CellStrings to geometries and calculating distances:
-| Function                                                                                     | Description                                                                                                       | Implemented? |
-|----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
-| **CST_TileXY(cell_id bigint, zoom int) → (tile_x int, tile_y int)**                          | Decodes a cell ID into tile X/Y coordinates for the given zoom level.                                             | ✓            |
-| **CST_CellAsPolygon(cell_id bigint, zoom int) → geometry(Polygon, 4326)**                    | Converts a single cell ID into its polygon geometry using `ST_TileEnvelope`.                                      | ✓            |
-| **CST_AsMultiPolygon(cellstring bigint[], zoom int) → geometry(MultiPolygon, 4326)**         | Converts a CellString into a MultiPolygon by unioning all cell polygons.                                          | ✓            |
-| **CST_CellAsPoint(cell_id bigint, zoom int) → geometry(Point, 4326)**                        | Returns the geographic center point of a tile defined by a cell ID and zoom level.                                | ✓            |
-| **CST_AsLineString(cellstring bigint[], zoom int) → geometry(LineString, 4326)**             | Builds a LineString trajectory from the center points of the cells in a CellString, preserving order.             | ✓            |
-| **CST_HausdorffDistance(cellstring bigint[], original_geom geometry, zoom int) → double**    | Computes the Hausdorff distance between a baseline LineString and its CellString representation at a given zoom.  | ✓            |
+Furthermore, the extension includes the following functions.
+| Function                                                                                                                          | Description                                                                                                       | Implemented? |
+|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
+| **CST_Coverage(cs_a bigint[], cs_b bigint[]) → numeric**                                                                          | Returns the coverage percentage of cellstring A over cellstring B.                                                | ✓            |
+| **CST_Coverage_ByMMSI(traj_table regclass, zoom int, area_cellstring bigint[]) -> setof (mmsi bigint, coverage_percent numeric)** | Computes coverage per MMSI for a trajectory table at a given zoom level against a given area cellstring.          | ✓            |
+| **CST_TileXY(cell_id bigint, zoom int) → (tile_x int, tile_y int)**                                                               | Decodes a cell ID into tile X/Y coordinates for the given zoom level.                                             | ✓            |
+| **CST_CellAsPolygon(cell_id bigint, zoom int) → geometry(Polygon, 4326)**                                                         | Converts a single cell ID into its polygon geometry using `ST_TileEnvelope`.                                      | ✓            |
+| **CST_AsMultiPolygon(cellstring bigint[], zoom int) → geometry(MultiPolygon, 4326)**                                              | Converts a CellString into a MultiPolygon by unioning all cell polygons.                                          | ✓            |
+| **CST_CellAsPoint(cell_id bigint, zoom int) → geometry(Point, 4326)**                                                             | Returns the geographic center point of a tile defined by a cell ID and zoom level.                                | ✓            |
+| **CST_AsLineString(cellstring bigint[], zoom int) → geometry(LineString, 4326)**                                                  | Builds a LineString trajectory from the center points of the cells in a CellString, preserving order.             | ✓            |
+| **CST_HausdorffDistance(cellstring bigint[], original_geom geometry, zoom int) → double**                                         | Computes the Hausdorff distance between a baseline LineString and its CellString representation at a given zoom.  | ✓            |
 
 
 
