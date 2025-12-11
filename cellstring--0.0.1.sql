@@ -110,6 +110,24 @@ CREATE OR REPLACE AGGREGATE CST_Union_Agg(bigint[]) (
 
 COMMENT ON AGGREGATE CST_Union_Agg(bigint[])
   IS 'Aggregate to compute the union of multiple CellStrings';
+
+CREATE OR REPLACE FUNCTION CST_Coverage(cs_a bigint[], cs_b bigint[])
+RETURNS numeric
+LANGUAGE SQL
+AS $$
+    SELECT
+        CASE
+            WHEN cardinality(cs_b) = 0 THEN 0
+            ELSE ROUND(
+                (cardinality(CST_Intersection(cs_a, cs_b))::numeric
+                 / cardinality(cs_b)) * 100,
+                2
+            )
+        END AS coverage_percent;
+$$;
+
+COMMENT ON FUNCTION CST_Coverage(bigint[], bigint[])
+  IS 'Returns the coverage percentage of cellstring A over cellstring B.';
   
 
 ------------------------ Functions for CellString operations (int[] inputs) -----------------------------
@@ -203,8 +221,7 @@ CREATE AGGREGATE CST_Union_Agg(int[]) (
 COMMENT ON AGGREGATE CST_Union_Agg(int[])
   IS 'Aggregate to compute the union of multiple CellStrings [int array version]';
 
-
-CREATE OR REPLACE FUNCTION CST_Coverage(cs_a bigint[], cs_b bigint[])
+CREATE OR REPLACE FUNCTION CST_Coverage(cs_a int[], cs_b int[])
 RETURNS numeric
 LANGUAGE SQL
 AS $$
@@ -219,10 +236,8 @@ AS $$
         END AS coverage_percent;
 $$;
 
-COMMENT ON FUNCTION CST_Coverage(bigint[], bigint[])
-  IS 'Returns the coverage percentage of cellstring A over cellstring B.';
-
-
+COMMENT ON FUNCTION CST_Coverage(int[], int[])
+  IS 'Returns the coverage percentage of cellstring A over cellstring B. [int array version]';
 
 CREATE OR REPLACE FUNCTION CST_Coverage_ByMMSI(
     traj_table REGCLASS,
