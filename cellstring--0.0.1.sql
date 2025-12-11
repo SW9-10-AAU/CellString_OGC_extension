@@ -147,7 +147,7 @@ CREATE OR REPLACE FUNCTION CST_Union(cs_a int[], cs_b int[])
     IMMUTABLE
     PARALLEL SAFE
 AS $$
-    SELECT cs_a | cs_b;
+    SELECT cs_a::bigint[] | cs_b::bigint[]; -- intarray union not directly supported, cast to bigint[]
 $$;
 
 COMMENT ON FUNCTION CST_Union(int[], int[])
