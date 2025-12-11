@@ -222,8 +222,6 @@ $$;
 COMMENT ON FUNCTION CST_Coverage(bigint[], bigint[])
   IS 'Returns the coverage percentage of cellstring A over cellstring B.';
 
-
-
 CREATE OR REPLACE FUNCTION CST_Coverage_ByMMSI(
     traj_table REGCLASS,
     zoom INTEGER,
@@ -235,8 +233,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 STABLE
-AS
-$$
+AS $$
 DECLARE
     cell_col TEXT;
     sql TEXT;
@@ -255,17 +252,16 @@ BEGIN
         RAISE EXCEPTION 'area_cellstring must not be NULL';
     END IF;
 
-    sql := format($f$
+    sql := format($fmt$
         WITH area AS (
-            SELECT %L::bigint[] AS cellstring
+            SELECT $1::bigint[] AS cellstring
         ),
         mmsi_union AS (
             SELECT
                 t.mmsi,
                 CST_Union_Agg(t.%I) AS union_cells
             FROM %s AS t
-            CROSS JOIN area
-            WHERE CST_Intersects(t.%I, area.cellstring)
+            JOIN area ON CST_Intersects(t.%I, area.cellstring)
             GROUP BY t.mmsi
         ),
         coverage AS (
@@ -276,20 +272,17 @@ BEGIN
                     area.cellstring
                 ) AS coverage_percent
             FROM mmsi_union AS mu
-            CROSS JOIN area
         )
         SELECT mmsi, coverage_percent
         FROM coverage
-        ORDER BY coverage_percent DESC
-    $f$, area_cellstring, cell_col, traj_table, cell_col);
-
-    RETURN QUERY EXECUTE sql;
+        ORDER BY coverage_percent DESC;
+    $fmt$, cell_col, traj_table, cell_col);
+    RETURN QUERY EXECUTE sql USING area_cellstring;
 END;
 $$;
 
 COMMENT ON FUNCTION CST_Coverage_ByMMSI(REGCLASS, INTEGER, BIGINT[])
-  IS 'Returns coverage percentage per MMSI for the given trajectory table, zoom (13/17/21), and area cellstring.';
-
+  IS 'Returns coverage percentage per MMSI for a trajectory table at a given zoom level.';
 
 -------------------------Visualisation of CellStrings with respect to zoom levels---------------------------
 
