@@ -179,6 +179,7 @@ CREATE OR REPLACE MACRO CST_CellAsPolygon(cell_id) AS
         'EPSG:4326',
         true
     );
+
 -- CST_CellAsPoint: Converts a cell ID to a point geometry at the cell's centroid.
 CREATE OR REPLACE MACRO CST_CellAsPoint(cell_id) AS
     ST_Centroid(CST_CellAsPolygon(cell_id));
@@ -191,10 +192,10 @@ CREATE OR REPLACE MACRO CST_AsLineString(traj_id_param) AS (
 );
 
 -- CST_AsPolygon: Reconstructs a full Polygon from a trajectory's cells.
-CREATE OR REPLACE MACRO CST_AsPolygon(traj_id_param) AS (
-    SELECT ST_Union_Agg(CST_CellAsPolygon(cell_id))
-    FROM cells
-    WHERE traj_id = traj_id_param
+CREATE OR REPLACE MACRO CST_AsPolygon(tablename, col_name, col_val) AS (
+    SELECT ST_Union_Agg(CST_CellAsPolygon(cell_z21))
+    FROM query_table(tablename)
+    WHERE COLUMNS(col_name) = col_val
 );
 
 
