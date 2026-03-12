@@ -9,6 +9,26 @@
 INSTALL spatial; 
 LOAD spatial;
 
+-- =============================================================================
+-- Drop existing macros (for clean reinstallation)
+-- =============================================================================
+DROP MACRO IF EXISTS CST_Intersects;
+DROP MACRO IF EXISTS CST_Intersection;
+DROP MACRO IF EXISTS CST_Union;
+DROP MACRO IF EXISTS CST_Difference;
+DROP MACRO IF EXISTS CST_Contains;
+DROP MACRO IF EXISTS CST_Disjoint;
+DROP MACRO IF EXISTS CST_Coverage;
+DROP MACRO IF EXISTS CST_TileXY;
+DROP MACRO IF EXISTS CST_CellAsPoint;
+DROP MACRO IF EXISTS CST_CellAsPolygon;
+DROP MACRO IF EXISTS CST_AsLineString;
+DROP MACRO IF EXISTS CST_AsPolygon;
+
+-- =============================================================================
+-- Create macros
+-- =============================================================================
+
 -- CST_Intersects: Returns TRUE if cellstring a intersects with cellstring b.
 CREATE OR REPLACE MACRO CST_Intersects(cs_a, cs_b) AS 
     len(list_intersect(cs_a, cs_b)) > 0;
