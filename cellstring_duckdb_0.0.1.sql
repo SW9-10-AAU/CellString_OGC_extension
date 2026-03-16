@@ -199,6 +199,41 @@ CREATE OR REPLACE MACRO CST_AsPolygon(tablename, col_name, col_val) AS (
 );
 
 
+--experiment fast visual
+
+CREATE OR REPLACE MACRO fast_CST_AsPolygon(tbl_name, id_col, target_id) AS (
+    SELECT
+        -- ConcaveHull ensures all unique cells are "melted" into one single Polygon
+        ST_ConcaveHull(
+            ST_Union_Agg(fast_tile_to_geom(cell_val, 21)),
+            0.1::DOUBLE,
+            false
+        )
+    FROM query(
+        'SELECT cell_z21 AS cell_val FROM ' || tbl_name ||
+        ' WHERE ' || id_col || ' = ' || target_id
+    )
+);
+
+
+CREATE OR REPLACE MACRO fast_tile_to_geom(tile_id, z) AS (
+    ST_Transform(
+        ST_TileEnvelope(
+            z::INTEGER,
+            -- Cast the sums to INTEGER to satisfy the function signature
+            list_sum(list_transform(range(z), i -> (tile_id >> (2 * i)) & 1 << i))::INTEGER,
+            list_sum(list_transform(range(z), i -> (tile_id >> (2 * i + 1)) & 1 << i))::INTEGER
+        ),
+        'EPSG:3857', 'EPSG:4326', true
+    )
+);
+
+
+
+
+
+
+
 
 -- CST_Coverage_ByMMSI (DuckDB query):
 -- SELECT mmsi, CST_Coverage(CST_Union(cellstring_col), area_cellstring) 
