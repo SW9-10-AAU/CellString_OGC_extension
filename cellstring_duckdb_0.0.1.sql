@@ -202,15 +202,10 @@ CREATE OR REPLACE MACRO CST_AsPolygon(tablename, col_name, col_val) AS (
 --experiment fast visual
 
 CREATE OR REPLACE MACRO fast_CST_AsPolygon(tbl_name, id_col, target_id) AS (
-    SELECT
-        -- ConcaveHull ensures all unique cells are "melted" into one single Polygon
-        ST_ConcaveHull(
-            ST_Union_Agg(fast_tile_to_geom(cell_val, 21)),
-            0.1::DOUBLE,
-            false
-        )
+    SELECT                                                     --55.52522979763203
+        ST_Union_Agg(ST_buffer((fast_tile_to_geom(cell_val, 21)), 0.00000000000001))
     FROM query(
-        'SELECT cell_z21 AS cell_val FROM ' || tbl_name ||
+        'SELECT DISTINCT cell_z21 AS cell_val FROM ' || tbl_name ||
         ' WHERE ' || id_col || ' = ' || target_id
     )
 );
