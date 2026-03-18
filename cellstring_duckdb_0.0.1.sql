@@ -224,20 +224,36 @@ CREATE OR REPLACE MACRO fast_tile_to_geom(tile_id, z) AS (
 );
 
 
-
-
-
-
-
-
--- CST_Coverage_ByMMSI (DuckDB query):
--- SELECT mmsi, CST_Coverage(CST_Union(cellstring_col), area_cellstring) 
--- FROM trajectories GROUP BY mmsi ORDER BY 2 DESC;
-
-
--- CST_Coverage: Returns the coverage percentage of cellstring A over cellstring B.
--- CREATE OR REPLACE MACRO CST_Coverage(cs_a, cs_b) AS 
---     CASE 
---         WHEN len(cs_b) = 0 THEN 0 
---         ELSE round((len(list_intersect(cs_a, cs_b))::DOUBLE / len(cs_b)::DOUBLE) * 100, 2) 
---     END;
+CREATE OR REPLACE MACRO CST_CoverageByMMSI(target_area_id, traj_table, stop_table) AS TABLE (
+    WITH area_cells AS (
+        SELECT
+            cell_z21,
+            COUNT(*) OVER() AS total_cells_in_area
+        FROM jgl_etl_performance_fix.area_cs
+        WHERE area_id = target_area_id
+    ),
+    vessel_footprint AS (
+        SELECT mmsi, cell_z21 FROM query_table(traj_table)
+        UNION
+        SELECT mmsi, cell_z21 FROM query_table(stop_table)
+    ),
+    intersecting_cells AS (
+        SELECT
+            v.mmsi,
+            v.cell_z21,
+            a.total_cells_in_area
+        FROM vessel_footprint v
+        INNER JOIN area_cells a ON v.cell_z21 = a.cell_z21
+    )
+    SELECT
+        mmsi,
+        COUNT(cell_z21) AS intersecting_cells,
+        MAX(total_cells_in_area) AS total_area_cells,
+        ROUND(
+            (COUNT(cell_z21)::DOUBLE / NULLIF(MAX(total_cells_in_area), 0)) * 100,
+            4
+        ) AS coverage_percentage
+    FROM intersecting_cells
+    GROUP BY mmsi
+    ORDER BY coverage_percentage DESC
+);
