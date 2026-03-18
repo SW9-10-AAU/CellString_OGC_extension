@@ -224,12 +224,12 @@ CREATE OR REPLACE MACRO fast_tile_to_geom(tile_id, z) AS (
 );
 
 
-CREATE OR REPLACE MACRO CST_CoverageByMMSI(target_area_id, traj_table, stop_table) AS TABLE (
+CREATE OR REPLACE MACRO CST_CoverageByMMSI(area_table, target_area_id, traj_table, stop_table) AS TABLE (
     WITH area_cells AS (
         SELECT
             cell_z21,
             COUNT(*) OVER() AS total_cells_in_area
-        FROM jgl_etl_performance_fix.area_cs
+        FROM query_table(area_table)
         WHERE area_id = target_area_id
     ),
     vessel_footprint AS (
