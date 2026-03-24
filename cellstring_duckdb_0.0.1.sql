@@ -19,11 +19,10 @@ DROP MACRO IF EXISTS CST_Difference;
 DROP MACRO IF EXISTS CST_Contains;
 DROP MACRO IF EXISTS CST_Disjoint;
 DROP MACRO IF EXISTS CST_Coverage;
-DROP MACRO IF EXISTS CST_TileXY;
 DROP MACRO IF EXISTS CST_CellAsPoint;
-DROP MACRO IF EXISTS CST_CellAsPolygon;
+DROP MACRO IF EXISTS CST_AsPolygon
 DROP MACRO IF EXISTS CST_AsLineString;
-DROP MACRO IF EXISTS CST_AsPolygon;
+DROP MACRO IF EXISTS CST_CellAsPolygon;
 
 DROP MACRO IF EXISTS quadkey_to_zxy;
 DROP MACRO IF EXISTS zxy_to_quadkey;
@@ -166,52 +165,29 @@ CREATE OR REPLACE MACRO CST_Disjoint(traj_id_a, traj_id_b) AS (
     WHERE a.traj_id = traj_id_a AND b.traj_id = traj_id_b
 );
 
- -- New: Uses quadkey integer decoding at fixed zoom 21
-CREATE OR REPLACE MACRO CST_TileXY(cell_id) AS (
-    SELECT {'x': x, 'y': y} FROM quadkey_to_zxy(int_to_quadkey(cell_id, 21))
-);
-
--- CST_CellAsPolygon: Converts a cell ID to its corresponding polygon geometry (tile envelope).
-CREATE OR REPLACE MACRO CST_CellAsPolygon(cell_id) AS
-    ST_Transform(
-        ST_TileEnvelope(21, CST_TileXY(cell_id).x, CST_TileXY(cell_id).y),
-        'EPSG:3857',
-        'EPSG:4326',
-        true
-    );
 
 -- CST_CellAsPoint: Converts a cell ID to a point geometry at the cell's centroid.
 CREATE OR REPLACE MACRO CST_CellAsPoint(cell_id) AS
-    ST_Centroid(CST_CellAsPolygon(cell_id));
+    ST_Centroid(CST_CellAsPolygon(cell_id, 21));
 
 -- Reconstruct LineString from a trajectory (ordered by timestamp)
 CREATE OR REPLACE MACRO CST_AsLineString(traj_id_param) AS (
-    SELECT ST_MakeLine(list(CST_CellAsPoint(cell_id) ORDER BY timestamp))
+    SELECT ST_MakeLine(list(CST_CellAsPolygon(cell_id, 21) ORDER BY timestamp))
     FROM cells
     WHERE traj_id = traj_id_param
 );
 
--- CST_AsPolygon: Reconstructs a full Polygon from a trajectory's cells.
-CREATE OR REPLACE MACRO CST_AsPolygon(tablename, col_name, col_val) AS (
-    SELECT ST_Union_Agg(CST_CellAsPolygon(cell_z21))
-    FROM query_table(tablename)
-    WHERE COLUMNS(col_name) = col_val
-);
-
-
 --experiment fast visual
-
-CREATE OR REPLACE MACRO fast_CST_AsPolygon(tbl_name, id_col, target_id) AS (
-    SELECT                                                     --55.52522979763203
-        ST_Union_Agg(ST_buffer((fast_tile_to_geom(cell_val, 21)), 0.00000000000001))
+CREATE OR REPLACE MACRO CST_AsPolygon(tbl_name, id_col, target_id) AS (
+    SELECT                                                  --55.52522979763203
+        ST_Union_Agg(ST_buffer((CST_CellAsPolygon(cell_val, 21)), 0.00000000000001))
     FROM query(
         'SELECT DISTINCT cell_z21 AS cell_val FROM ' || tbl_name ||
         ' WHERE ' || id_col || ' = ' || target_id
     )
 );
 
-
-CREATE OR REPLACE MACRO fast_tile_to_geom(tile_id, z) AS (
+CREATE OR REPLACE MACRO CST_CellAsPolygon(tile_id, z) AS (
     ST_Transform(
         ST_TileEnvelope(
             z::INTEGER,
