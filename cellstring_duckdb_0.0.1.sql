@@ -14,12 +14,12 @@ LOAD spatial;
 -- =============================================================================
 --TODO : Add drop statements for any new macros added in the future
 DROP MACRO IF EXISTS CS_Intersects;
-DROP MACRO IF EXISTS CS_Intersection;
-DROP MACRO IF EXISTS CS_Union;
-DROP MACRO IF EXISTS CS_Difference;
+DROP MACRO TABLE IF EXISTS CS_Intersection;
+DROP MACRO TABLE IF EXISTS CS_Union;
+DROP MACRO TABLE IF EXISTS CS_Difference;
 DROP MACRO IF EXISTS CS_Contains;
 DROP MACRO IF EXISTS CS_Disjoint;
-DROP MACRO IF EXISTS CS_Coverage;
+DROP MACRO TABLE IF EXISTS CS_Coverage;
 DROP MACRO IF EXISTS CS_CellAsPoint;
 DROP MACRO IF EXISTS CS_AsPolygon;
 DROP MACRO IF EXISTS CS_AsLineString;
