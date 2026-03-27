@@ -19,12 +19,13 @@ DROP MACRO TABLE IF EXISTS CS_Union;
 DROP MACRO TABLE IF EXISTS CS_Difference;
 DROP MACRO IF EXISTS CS_Contains;
 DROP MACRO IF EXISTS CS_Disjoint;
-DROP MACRO TABLE IF EXISTS CS_Coverage;
+DROP MACRO IF EXISTS CS_Coverage;
 DROP MACRO IF EXISTS CS_CellAsPoint;
 DROP MACRO IF EXISTS CS_AsPolygon;
 DROP MACRO IF EXISTS CS_AsLineString;
 DROP MACRO IF EXISTS CS_CellStringAsPolygon;
-DROP MACRO IF EXISTS CS_CoverageByMMSI;
+DROP MACRO TABLE IF EXISTS CS_CoverageByMMSI;
+DROP MACRO TABLE IF EXISTS CS_NewCoverageByMMSI;
 
 -- DROP MACRO IF EXISTS quadkey_to_zoomxy;
 -- DROP MACRO IF EXISTS zoomxy_to_quadkey;
@@ -109,6 +110,16 @@ CREATE OR REPLACE MACRO CS_CellIdToQuadkey(cell_id, zoom) AS (
     ) t
 );
 
+-- get the parent cell ID at a coarser zoom level by right-shifting the cell ID's bits according to the zoom difference
+CREATE OR REPLACE MACRO CS_GetParentCellId(cell_id, from_zoom, to_zoom) AS (
+   CASE
+       WHEN to_zoom >= from_zoom THEN
+           error(format('parent zoom level must be coarser than source zoom level. Parent zoom: {} not coarser than source zoom: {}', to_zoom, from_zoom))
+      ELSE
+           cell_id >> ((from_zoom - to_zoom) * 2)
+   END
+);
+
 --TODO implement the macros.
 -- --------------------------------------------------------------------------------
 -- CellString macros
@@ -181,6 +192,21 @@ CREATE OR REPLACE MACRO CS_Disjoint(cs_a, cs_b) AS (
         )
     );
 
+
+--calculate the percentage of cells in cellstring b that are also in cellstring a - i.e. covarage procentage
+CREATE OR REPLACE MACRO CS_Coverage(cs_a, cs_b) AS (
+    COALESCE(
+        (
+            SELECT count(DISTINCT a.cell_z21) * 100.0
+            FROM query_table(cs_a) a
+            INNER JOIN query_table(cs_b) b ON a.cell_z21 = b.cell_z21
+        )
+        /
+        NULLIF((SELECT count(DISTINCT cell_z21) FROM query_table(cs_b)), 0),
+        0.0
+    )
+);
+
 --Coverage macro: Computes the percentage of an area covered by a vessel trajectories
 CREATE OR REPLACE MACRO CS_CoverageByMMSI(area_table, target_area_id, traj_table, stop_table) AS TABLE (
     WITH area_cells AS (
@@ -209,6 +235,38 @@ CREATE OR REPLACE MACRO CS_CoverageByMMSI(area_table, target_area_id, traj_table
         MAX(total_cells_in_area) AS total_area_cells,
         ROUND(
             (COUNT(cell_z21)::DOUBLE / NULLIF(MAX(total_cells_in_area), 0)) * 100,
+            4
+        ) AS coverage_percentage
+    FROM intersecting_cells
+    GROUP BY mmsi
+    ORDER BY coverage_percentage DESC
+);
+
+CREATE OR REPLACE MACRO CS_NewCoverageByMMSI(cs_area, cs_vessel_footprint) AS TABLE (
+    WITH area_cells AS (
+        SELECT
+            cell_z21,
+            COUNT(*) OVER() AS total_cells_in_area
+        FROM (SELECT DISTINCT cell_z21 FROM query_table(cs_area))
+    ),
+    unique_vessel_cells AS (
+        SELECT DISTINCT mmsi, cell_z21 
+        FROM query_table(cs_vessel_footprint)
+    ),
+    intersecting_cells AS (
+        SELECT
+            v.mmsi,
+            v.cell_z21,
+            a.total_cells_in_area
+        FROM unique_vessel_cells v
+        INNER JOIN area_cells a ON v.cell_z21 = a.cell_z21
+    )
+    SELECT
+        mmsi,
+        COUNT(cell_z21) AS intersecting_cells,
+        MAX(total_cells_in_area) AS total_area_cells,
+        ROUND(
+            (COUNT(cell_z21)::DOUBLE / NULLIF(MAX(total_cells_in_area), 0)) * 100.0,
             4
         ) AS coverage_percentage
     FROM intersecting_cells
