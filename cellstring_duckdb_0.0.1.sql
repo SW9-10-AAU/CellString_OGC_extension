@@ -12,7 +12,6 @@ LOAD spatial;
 -- =============================================================================
 -- Drop existing macros (for clean reinstallation)
 -- =============================================================================
---TODO : Add drop statements for any new macros added in the future
 DROP MACRO IF EXISTS CS_Intersects;
 DROP MACRO TABLE IF EXISTS CS_Intersection;
 DROP MACRO TABLE IF EXISTS CS_Union;
@@ -120,7 +119,6 @@ CREATE OR REPLACE MACRO CS_GetParentCellId(cell_id, from_zoom, to_zoom) AS (
    END
 );
 
---TODO implement the macros.
 -- --------------------------------------------------------------------------------
 -- CellString macros
 -- --------------------------------------------------------------------------------
@@ -191,7 +189,6 @@ CREATE OR REPLACE MACRO CS_Disjoint(cs_a, cs_b) AS (
               ON a.cell_z21 = b.cell_z21
         )
     );
-
 
 --calculate the percentage of cells in cellstring b that are also in cellstring a - i.e. covarage procentage
 CREATE OR REPLACE MACRO CS_Coverage(cs_a, cs_b) AS (
@@ -282,10 +279,9 @@ CREATE OR REPLACE MACRO CS_CellAsPoint(cell_id, zoom) AS
     ST_Centroid(CS_CellAsPolygon(cell_id, zoom));
 
 -- Reconstruct LineString from a trajectory (ordered by timestamp)
-CREATE OR REPLACE MACRO CS_AsLineString(traj_id_param, zoom) AS (
-    SELECT ST_MakeLine(list(CS_CellAsPolygon(cell_id, zoom) ORDER BY timestamp))
-    FROM cells
-    WHERE traj_id = traj_id_param
+CREATE OR REPLACE MACRO CS_AsLineString(cs, zoom) AS (
+    SELECT ST_MakeLine(list(CS_CellAsPoint(cell_z21, zoom) ORDER BY ts))
+    FROM query_table(cs)
 );
 
 -- CS_CellStringAsPolygon: Converts all cells of a cellstring into a single or multi polygon geometry representing the union of cell areas.
