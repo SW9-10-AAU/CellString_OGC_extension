@@ -271,8 +271,20 @@ CREATE OR REPLACE MACRO CS_NewCoverageByMMSI(cs_area, cs_vessel_footprint) AS TA
     ORDER BY coverage_percentage DESC
 );
 
---Visualizoomation macros to convert cell IDs to geometries for plotting
+-- Visualisation macros to convert cell IDs to geometries for plotting
 -----------------------------------------------------------------------------------------------
+
+-- CS_CellAsPolygon: Converts a cell ID to a polygon geometry representing the cell's area.
+CREATE OR REPLACE MACRO CS_CellAsPolygon(cell_id, zoom) AS (
+   ST_Transform(
+       ST_TileEnvelope(
+           zoom::INTEGER,
+           list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i)) & 1 << i))::INTEGER,
+           list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i + 1)) & 1 << i))::INTEGER
+       ),
+       'EPSG:3857', 'EPSG:4326', true
+   )
+);
 
 -- CS_CellAsPoint: Converts a cell ID to a point geometry at the cell's centroid.
 CREATE OR REPLACE MACRO CS_CellAsPoint(cell_id, zoom) AS
@@ -293,14 +305,3 @@ CREATE OR REPLACE MACRO CS_CellStringAsPolygon(cs, zoom) AS (
     )
 );
 
--- CS_CellAsPolygon: Converts a cell ID to a polygon geometry representing the cell's area.
-CREATE OR REPLACE MACRO CS_CellAsPolygon(cell_id, zoom) AS (
-   ST_Transform(
-       ST_TileEnvelope(
-           zoom::INTEGER,
-           list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i)) & 1 << i))::INTEGER,
-           list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i + 1)) & 1 << i))::INTEGER
-       ),
-       'EPSG:3857', 'EPSG:4326', true
-   )
-);
