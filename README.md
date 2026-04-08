@@ -113,30 +113,28 @@ Macro-based implementation using unnested cells with bit-encoded quadkeys. Desig
 
 #### Core OGC Operations
 
-| Macro Signature                              | Returns   | Description                                                        |
-| -------------------------------------------- | --------- | ------------------------------------------------------------------ |
-| `CS_Intersects(cs_a, cs_b)`                  | `boolean` | Returns TRUE if cells overlap (spatial only)                       |
-| `CS_Intersects(cs_a, cs_b, time_interval)`   | `boolean` | Returns TRUE if cells overlap within time window (spatio-temporal) |
-| `CS_Intersection(cs_a, cs_b)`                | `TABLE`   | Returns intersection cells (spatial only)                          |
-| `CS_Intersection(cs_a, cs_b, time_interval)` | `TABLE`   | Returns intersection cells within time window (spatio-temporal)    |
-| `CS_Union(cs_a, cs_b)`                       | `TABLE`   | Returns union of cells from both cellstrings                       |
-| `CS_Difference(cs_a, cs_b)`                  | `TABLE`   | Returns cells in A that are NOT in B                               |
-| `CS_Contains(cs_a, cs_b)`                    | `boolean` | Returns TRUE if A fully contains B                                 |
-| `CS_Disjoint(cs_a, cs_b)`                    | `boolean` | Returns TRUE if cellstrings share no cells                         |
+| Macro Signature               | Returns   | Description                                  |
+| ----------------------------- | --------- | -------------------------------------------- |
+| `CS_Intersects(cs_a, cs_b)`   | `boolean` | Returns TRUE if cells overlap (spatial only) |
+| `CS_Intersection(cs_a, cs_b)` | `TABLE`   | Returns intersection cells (spatial only)    |
+| `CS_Union(cs_a, cs_b)`        | `TABLE`   | Returns union of cells from both cellstrings |
+| `CS_Difference(cs_a, cs_b)`   | `TABLE`   | Returns cells in A that are NOT in B         |
+| `CS_Contains(cs_a, cs_b)`     | `boolean` | Returns TRUE if A fully contains B           |
+| `CS_Disjoint(cs_a, cs_b)`     | `boolean` | Returns TRUE if cellstrings share no cells   |
 
 #### Analysis & Visualization Functions
 
-| Macro Signature                                                         | Returns                          | Description                                                |
-| ----------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------- |
-| `CS_Coverage(cs_a, cs_b)`                                               | `float`                          | Coverage percentage of cellstring A over cellstring B      |
-| `CS_CoverageByMMSI(area_table, target_area_id, traj_table, stop_table)` | `TABLE (mmsi, coverage_percent)` | Coverage per MMSI using table references                   |
-| `CS_NewCoverageByMMSI(cs_area, cs_vessel_footprint)`                    | `TABLE (mmsi, coverage_percent)` | Coverage per MMSI using cellstring arguments               |
-| `CS_CellAsPolygon(cell_id, zoom)`                                       | `geometry`                       | Converts cell ID to polygon geometry                       |
-| `CS_CellStringAsPolygon(cs, zoom)`                                      | `geometry`                       | Unions all cell polygons from a cellstring                 |
-| `CS_CellAsPoint(cell_id, zoom)`                                         | `geometry`                       | Returns cell centroid as a point                           |
-| `CS_AsLineString(cs, zoom)`                                             | `geometry`                       | Builds LineString from cell centers (ordered by timestamp) |
-| `CS_CellIdToQuadkey(cell_id, zoom)`                                     | `string`                         | Converts cell ID to quadkey string (bit-encoded)           |
-| `CS_GetParentCellId(cell_id, from_zoom, to_zoom)`                       | `bigint`                         | Gets parent cell ID at coarser zoom level                  |
+| Macro Signature                              | Returns    | Description                                                                 |
+| :------------------------------------------- | :--------- | :-------------------------------------------------------------------------- |
+| `CS_CellIdToTileZXY(cell_id, zoom)`          | `STRUCT`   | Decodes Cell ID into `{z, x, y}` using bit de-interleaving (Z-order curve). |
+| `CS_Coverage(cs_a, cs_b)`                    | `float`    | Coverage percentage of cellstring A over cellstring B.                      |
+| `CS_CoverageByMMSI(cs_area, cs_v_footprint)` | `TABLE`    | Coverage per MMSI using cellstring arguments.                               |
+| `CS_CellAsPolygon(cell_id, zoom)`            | `geometry` | Converts cell ID to polygon geometry (EPSG:4326).                           |
+| `CS_AsPolygon(cs, zoom)`                     | `geometry` | Unions all cell polygons from a cellstring into a single geometry.          |
+| `CS_CellAsPoint(cell_id, zoom)`              | `geometry` | Returns cell centroid as a point.                                           |
+| `CS_AsLineString(cs, zoom)`                  | `geometry` | Builds LineString from cell centers (requires `ts` column for ordering).    |
+| `CS_CellIdToQuadkey(cell_id, zoom)`          | `string`   | Converts cell ID to a standard Quadkey string.                              |
+| `CS_GetParentCellId(id, z_in, z_out)`        | `bigint`   | Gets parent cell ID at coarser zoom level via bit-shifting.                 |
 
 ### Installation
 
@@ -188,11 +186,6 @@ WITH traj_1 AS (SELECT cell_z21 FROM trajectory_cs WHERE trajectory_id = 1),
      traj_2 AS (SELECT cell_z21 FROM trajectory_cs WHERE trajectory_id = 2)
 SELECT CS_Intersects(traj_1, traj_2) AS is_intersecting;
 
--- Spatio-temporal intersection (within 20 seconds)
-WITH traj_1 AS (SELECT cell_z21, ts FROM trajectory_cs WHERE trajectory_id = 1),
-     traj_2 AS (SELECT cell_z21, ts FROM trajectory_cs WHERE trajectory_id = 2)
-SELECT CS_Intersects(traj_1, traj_2, INTERVAL 20 SECOND) AS is_intersecting;
-
 -- Get intersection cells
 WITH traj_1 AS (SELECT cell_z21 FROM trajectory_cs WHERE trajectory_id = 1),
      traj_2 AS (SELECT cell_z21 FROM trajectory_cs WHERE trajectory_id = 2)
@@ -216,4 +209,18 @@ SELECT CS_CellIdToQuadkey(12343534553343, 21) AS quadkey;
 
 -- Get parent cell at coarser zoom level
 SELECT CS_GetParentCellId(12343534553343, 21, 17) AS parent_cell_id;
+
+-- Returns a struct: {z: 21, x: ..., y: ...}
+SELECT CS_CellIdToTileZXY(12343534553343, 21) AS tile_coords;
+
+-- Computes the percentage of a target area covered by each vessel's footprint
+WITH target_area AS (SELECT cell_z21 FROM trajectory_cs WHERE trajectory_id = 1)
+SELECT * FROM CS_CoverageByMMSI(target_area, trajectory_cs);
+
+-- Converts a Cell ID into a Point geometry at the center of the tile
+SELECT ST_AsText(CS_CellAsPoint(12343534553343, 21)) AS centroid_point;
+
+-- Unions all cells in a cellstring into a single (Multi)Polygon geometry
+WITH traj_1 AS (SELECT cell_z21 FROM trajectory_cs WHERE trajectory_id = 1)
+SELECT ST_AsText(CS_AsPolygon(traj_1, 21)) AS area_geometry;
 ```

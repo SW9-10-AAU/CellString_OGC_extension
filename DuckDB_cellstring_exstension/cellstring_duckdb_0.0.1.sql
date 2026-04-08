@@ -1,14 +1,9 @@
 -- =============================================================================
 -- CellString DuckDB extension
 -- =============================================================================
--- Usage: 
--- 1. Ensure the 'spatial' extension is installed: INSTALL spatial; LOAD spatial;
--- 2. Run this file: .read cellstring_macros.sql
--- =============================================================================
-
+-- Ensure the 'spatial' extension is installed: INSTALL spatial; LOAD spatial;
 INSTALL spatial; 
 LOAD spatial;
-
 -- =============================================================================
 -- Drop existing macros (for clean reinstallation)
 -- =============================================================================
@@ -20,11 +15,12 @@ DROP MACRO IF EXISTS CS_Contains;
 DROP MACRO IF EXISTS CS_Disjoint;
 DROP MACRO IF EXISTS CS_Coverage;
 DROP MACRO IF EXISTS CS_CellAsPoint;
-DROP MACRO IF EXISTS CS_AsPolygon;
+DROP MACRO IF EXISTS CS_CellIdToTileZXY;
+DROP MACRO IF EXISTS CS_GetParentCellId;
+DROP MACRO IF EXISTS CS_CellAsPolygon;
 DROP MACRO IF EXISTS CS_AsLineString;
-DROP MACRO IF EXISTS CS_CellStringAsPolygon;
+DROP MACRO IF EXISTS CS_AsPolygon;
 DROP MACRO TABLE IF EXISTS CS_CoverageByMMSI;
-DROP MACRO TABLE IF EXISTS CS_NewCoverageByMMSI;
 
 -- DROP MACRO IF EXISTS quadkey_to_zoomxy;
 -- DROP MACRO IF EXISTS zoomxy_to_quadkey;
@@ -33,7 +29,6 @@ DROP MACRO IF EXISTS CS_CellIdToQuadkey;
 -- =============================================================================
 -- Create macros
 -- =============================================================================
-
 --------------------------------------------------------------------------------
 -- Helper macros - Quadkey conversion utilities
 --------------------------------------------------------------------------------
@@ -89,7 +84,7 @@ DROP MACRO IF EXISTS CS_CellIdToQuadkey;
 --     SELECT quad FROM bits WHERE level = 0 LIMIT 1
 -- );
 
--- int_to_quadkey: Converts a base-4 integer encoding to a quadkey string
+-- int_to_quadkey: Converts a base-4 integer encoding to a quadkey string (UKC - https://pypi.org/project/ukc_core/)
 CREATE OR REPLACE MACRO CS_CellIdToQuadkey(cell_id, zoom) AS (
     WITH input AS (
         SELECT right(cell_id::BIT::VARCHAR, zoom * 2) AS bitstring
@@ -122,57 +117,38 @@ CREATE OR REPLACE MACRO CS_GetParentCellId(cell_id, from_zoom, to_zoom) AS (
 -- --------------------------------------------------------------------------------
 -- CellString macros
 -- --------------------------------------------------------------------------------
-CREATE OR REPLACE MACRO CS_Intersects
--- Overload 1: Two arguments (Spatial only)
-   (cs_a, cs_b) AS (
-       EXISTS (
-           SELECT 1
-           FROM query_table(cs_a) a
-           INNER JOIN query_table(cs_b) b ON a.cell_z21 = b.cell_z21
-       )
-   ),
--- Overload 2: Three arguments (Spatio-Temporal)
-   (cs_a, cs_b, time_interval) AS (
-       EXISTS (
-           SELECT 1
-           FROM query_table(cs_a) a
-           JOIN query_table(cs_b) b ON a.cell_z21 = b.cell_z21
-           WHERE a.ts BETWEEN b.ts - time_interval AND b.ts + time_interval
-       )
-   );
 
-CREATE OR REPLACE MACRO CS_Intersection
-   -- Overload 1: Two arguments (Spatial only)
-   (cs_a, cs_b) AS TABLE (
-       SELECT DISTINCT a.cell_z21
-       FROM query_table(cs_a) a
-       INNER JOIN query_table(cs_b) b
-         ON a.cell_z21 = b.cell_z21
-   ),
-   -- Overload 2: Three arguments (Spatio-Temporal)
-   (cs_a, cs_b, time_interval) AS TABLE (
-       SELECT Distinct a.cell_z21
-       FROM query_table(cs_a) a
-       INNER JOIN query_table(cs_b) b
-         ON a.cell_z21 = b.cell_z21
-       WHERE a.ts BETWEEN b.ts - time_interval AND b.ts + time_interval
-   );
+-- CS_Intersects: Returns TRUE if cellstring A and B share at least one common cell.
+CREATE OR REPLACE MACRO CS_Intersects(cs_a, cs_b) AS (
+    EXISTS (
+        SELECT 1
+        FROM query_table(cs_a) a
+        JOIN query_table(cs_b) b ON a.cell_z21 = b.cell_z21
+    )
+);
 
--- -- CS_Union: Returns all unique cells from both trajectories.
+-- CS_Intersection: Returns the set of unique cells that are common to both cellstrings.
+CREATE OR REPLACE MACRO CS_Intersection(cs_a, cs_b) AS TABLE (
+    SELECT cell_z21 FROM query_table(cs_a)
+    INTERSECT
+    SELECT cell_z21 FROM query_table(cs_b)
+);
+
+-- CS_Union: Returns all unique cells from both cellstrings.
 CREATE OR REPLACE MACRO CS_Union(cs_a, cs_b) AS TABLE (
     SELECT cell_z21 FROM query_table(cs_a)
     UNION
     SELECT cell_z21 FROM query_table(cs_b)
 );
 
--- -- CS_Difference: Returns cells in trajectory A that are NOT in trajectory B.
+-- CS_Difference: Returns cells in cellstring A that are NOT in cellstring B.
 CREATE OR REPLACE MACRO CS_Difference(cs_a, cs_b) AS TABLE (
     SELECT cell_z21 FROM query_table(cs_a)
     EXCEPT
     SELECT cell_z21 FROM query_table(cs_b)
 );
 
--- -- CS_Contains: Returns TRUE if trajectory A fully contains all cells of trajectory B.
+-- CS_Contains: Returns TRUE if cellstring A fully contains all cells of cellstring B.
 CREATE OR REPLACE MACRO CS_Contains(cs_a, cs_b) AS (
     NOT EXISTS (
         SELECT cell_z21 FROM query_table(cs_b)
@@ -181,22 +157,22 @@ CREATE OR REPLACE MACRO CS_Contains(cs_a, cs_b) AS (
     )
 );
 
+-- CS_Disjoint: Returns TRUE if cellstring A and B have no cells in common.
 CREATE OR REPLACE MACRO CS_Disjoint(cs_a, cs_b) AS (
-        NOT EXISTS (
-            SELECT 1
-            FROM query_table(cs_a) a
-            INNER JOIN query_table(cs_b) b
-              ON a.cell_z21 = b.cell_z21
-        )
-    );
+    NOT EXISTS (
+        SELECT cell_z21 FROM query_table(cs_a)
+        INTERSECT
+        SELECT cell_z21 FROM query_table(cs_b)
+    )
+);
 
---calculate the percentage of cells in cellstring b that are also in cellstring a - i.e. covarage procentage
+-- Calculate the percentage of cells in cellstring b that are also in cellstring a - i.e. coverage percentage
 CREATE OR REPLACE MACRO CS_Coverage(cs_a, cs_b) AS (
     COALESCE(
         (
             SELECT count(DISTINCT a.cell_z21) * 100.0
             FROM query_table(cs_a) a
-            INNER JOIN query_table(cs_b) b ON a.cell_z21 = b.cell_z21
+            JOIN query_table(cs_b) b ON a.cell_z21 = b.cell_z21
         )
         /
         NULLIF((SELECT count(DISTINCT cell_z21) FROM query_table(cs_b)), 0),
@@ -204,42 +180,8 @@ CREATE OR REPLACE MACRO CS_Coverage(cs_a, cs_b) AS (
     )
 );
 
---Coverage macro: Computes the percentage of an area covered by a vessel trajectories
-CREATE OR REPLACE MACRO CS_CoverageByMMSI(area_table, target_area_id, traj_table, stop_table) AS TABLE (
-    WITH area_cells AS (
-        SELECT
-            cell_z21,
-            COUNT(*) OVER() AS total_cells_in_area
-        FROM query_table(area_table)
-        WHERE area_id = target_area_id
-    ),
-    vessel_footprint AS (
-        SELECT mmsi, cell_z21 FROM query_table(traj_table)
-        UNION
-        SELECT mmsi, cell_z21 FROM query_table(stop_table)
-    ),
-    intersecting_cells AS (
-        SELECT
-            v.mmsi,
-            v.cell_z21,
-            a.total_cells_in_area
-        FROM vessel_footprint v
-        INNER JOIN area_cells a ON v.cell_z21 = a.cell_z21
-    )
-    SELECT
-        mmsi,
-        COUNT(cell_z21) AS intersecting_cells,
-        MAX(total_cells_in_area) AS total_area_cells,
-        ROUND(
-            (COUNT(cell_z21)::DOUBLE / NULLIF(MAX(total_cells_in_area), 0)) * 100,
-            4
-        ) AS coverage_percentage
-    FROM intersecting_cells
-    GROUP BY mmsi
-    ORDER BY coverage_percentage DESC
-);
-
-CREATE OR REPLACE MACRO CS_NewCoverageByMMSI(cs_area, cs_vessel_footprint) AS TABLE (
+-- Calculate coverage percentage of a vessel's footprint (cellstring) over a defined area (cellstring), grouped by vessel identifier (e.g. MMSI)
+CREATE OR REPLACE MACRO CS_CoverageByMMSI(cs_area, cs_vessel_footprint) AS TABLE (
     WITH area_cells AS (
         SELECT
             cell_z21,
@@ -256,7 +198,7 @@ CREATE OR REPLACE MACRO CS_NewCoverageByMMSI(cs_area, cs_vessel_footprint) AS TA
             v.cell_z21,
             a.total_cells_in_area
         FROM unique_vessel_cells v
-        INNER JOIN area_cells a ON v.cell_z21 = a.cell_z21
+        JOIN area_cells a ON v.cell_z21 = a.cell_z21
     )
     SELECT
         mmsi,
@@ -274,13 +216,33 @@ CREATE OR REPLACE MACRO CS_NewCoverageByMMSI(cs_area, cs_vessel_footprint) AS TA
 -- Visualisation macros to convert cell IDs to geometries for plotting
 -----------------------------------------------------------------------------------------------
 
--- CS_CellAsPolygon: Converts a cell ID to a polygon geometry representing the cell's area.
+-- -- CS_CellAsPolygon: Converts a cell ID to a polygon geometry representing the cell's area.
+-- CREATE OR REPLACE MACRO CS_CellAsPolygon(cell_id, zoom) AS (
+--    ST_Transform(
+--        ST_TileEnvelope(
+--            zoom::INTEGER,
+--            list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i)) & 1 << i))::INTEGER,
+--            list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i + 1)) & 1 << i))::INTEGER
+--        ),
+--        'EPSG:3857', 'EPSG:4326', true
+--    )
+-- );
+
+CREATE OR REPLACE MACRO CS_CellIdToTileZXY(cell_id, zoom) AS (
+    {
+        z: zoom::INTEGER,
+        --Bit De-interleaving, reversing a Morton Order (Z-order curve) encoding to get x and y
+        x: list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i)) & 1 << i))::INTEGER, -- Even positions (0, 2, 4...) contain the bits for the X coordinate.
+        y: list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i + 1)) & 1 << i))::INTEGER -- Odd positions (1, 3, 5...) contain the bits for the Y coordinate.
+    }
+);
+
 CREATE OR REPLACE MACRO CS_CellAsPolygon(cell_id, zoom) AS (
    ST_Transform(
        ST_TileEnvelope(
-           zoom::INTEGER,
-           list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i)) & 1 << i))::INTEGER,
-           list_sum(list_transform(range(zoom), i -> (cell_id >> (2 * i + 1)) & 1 << i))::INTEGER
+           CS_CellIdToTileZXY(cell_id, zoom).z,
+           CS_CellIdToTileZXY(cell_id, zoom).x,
+           CS_CellIdToTileZXY(cell_id, zoom).y
        ),
        'EPSG:3857', 'EPSG:4326', true
    )
@@ -297,7 +259,7 @@ CREATE OR REPLACE MACRO CS_AsLineString(cs, zoom) AS (
 );
 
 -- CS_CellStringAsPolygon: Converts all cells of a cellstring into a single or multi polygon geometry representing the union of cell areas.
-CREATE OR REPLACE MACRO CS_CellStringAsPolygon(cs, zoom) AS (
+CREATE OR REPLACE MACRO CS_AsPolygon(cs, zoom) AS (
     (
         SELECT 
             ST_Union_Agg(ST_Buffer(CS_CellAsPolygon(cell_z21, zoom), 0.00000000000001))
