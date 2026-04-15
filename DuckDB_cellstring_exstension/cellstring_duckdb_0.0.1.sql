@@ -267,3 +267,32 @@ CREATE OR REPLACE MACRO CS_AsPolygon(cs, zoom) AS (
     )
 );
 
+-- CS_IntersectionOverUnion: Calculates the Intersection over Union (IoU) similarity score between a query trajectory and candidate trajectories.
+CREATE OR REPLACE MACRO CS_IoU(cs_a, cs_b) AS TABLE (
+    WITH intersection_stats AS (
+        SELECT
+            c.trajectory_id,
+            COUNT(DISTINCT c.cell_z21) AS intersection_cnt
+        FROM query_table(cs_b) c
+        JOIN cs_a q ON c.cell_z21 = q.cell_z21
+        GROUP BY c.trajectory_id
+    ),
+    candidate_counts AS (
+        SELECT
+            trajectory_id,
+            COUNT(DISTINCT cell_z21) AS candidate_cnt
+        FROM query_table(cs_b)
+        GROUP BY trajectory_id
+    ),
+    query_count AS (
+        SELECT COUNT(DISTINCT cell_z21) AS query_cnt
+        FROM query_table(cs_a)
+    )
+    SELECT
+        i.trajectory_id,
+        i.intersection_cnt::FLOAT / (q.query_cnt + c.candidate_cnt - i.intersection_cnt)::FLOAT AS similarity_score
+    FROM intersection_stats i
+    JOIN candidate_counts c ON i.trajectory_id = c.trajectory_id
+    CROSS JOIN query_count q
+);
+
