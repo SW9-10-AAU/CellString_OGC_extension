@@ -296,3 +296,86 @@ CREATE OR REPLACE MACRO CS_IoU(cs_a, cs_b) AS TABLE (
     CROSS JOIN query_count q
 );
 
+
+CREATE OR REPLACE MACRO CS_Distance(a, b, zoom) AS (
+    GREATEST(
+        ABS(
+            CS_CellIdToTileZXY(a, zoom).x
+            - CS_CellIdToTileZXY(b, zoom).x
+        ),
+        ABS(
+            CS_CellIdToTileZXY(a, zoom).y
+            - CS_CellIdToTileZXY(b, zoom).y
+        )
+    )
+);
+       
+CREATE OR REPLACE MACRO CS_Distance_Decoded(a_x, a_y, b_x, b_y) AS (
+    GREATEST(
+        ABS(a_x - b_x),
+        ABS(a_y - b_y)
+    )
+);
+-- below is required to do distance with CS_Distance_Decoded, which requires pre-decoding the cell IDs to x,y tile coordinates. This is more computationally expensive but allows for distance calculations without needing to convert to geometries, which can be costly at scale. Depending on the use case and data size, users can choose between CS_Distance (which operates on cell IDs directly) and CS_Distance_Decoded (which operates on pre-decoded tile coordinates).
+-- CREATE OR REPLACE TEMP TABLE trajectory_decoded AS
+-- SELECT
+--     trajectory_id,
+--     cell_z21,
+--     CS_CellIdToTileZXY(cell_z21, 21).x AS x,
+--     CS_CellIdToTileZXY(cell_z21, 21).y AS y
+-- FROM trajectory_cs;
+
+
+
+CREATE OR REPLACE MACRO CS_KNN(cs_a, cs_b, zoom, k) AS TABLE (
+    WITH a_cells AS (
+        SELECT DISTINCT cell_z21 FROM query_table(cs_a)
+    ),
+    b_cells AS (
+        SELECT DISTINCT cell_z21, trajectory_id FROM query_table(cs_b)
+    ),
+    distance_calculations AS (
+        SELECT
+            b.trajectory_id,
+            MIN(CS_Distance(a.cell_z21, b.cell_z21, zoom)) AS min_distance
+        FROM a_cells a
+        CROSS JOIN b_cells b
+        GROUP BY b.trajectory_id
+    )
+    SELECT trajectory_id, min_distance
+    FROM distance_calculations
+    ORDER BY min_distance
+    LIMIT k
+);
+
+CREATE OR REPLACE MACRO CS_KNN_Decoded(cs_a, cs_b, zoom, k) AS TABLE (
+    WITH
+    a_cells AS (
+        SELECT * FROM query_table(cs_a)
+    ),
+    b_cells AS (
+        SELECT * FROM query_table(cs_b)
+    ),
+    distance_calculations AS (
+        SELECT
+            b.trajectory_id,
+            MIN(CS_Distance_Decoded(a.x, a.y, b.x, b.y)) AS min_distance
+        FROM a_cells a
+        CROSS JOIN b_cells b
+        GROUP BY b.trajectory_id
+    )
+    SELECT
+        trajectory_id,
+        min_distance
+    FROM distance_calculations
+    ORDER BY min_distance
+    LIMIT k
+);
+-- below is required to do distance with CS_Distance_Decoded, which requires pre-decoding the cell IDs to x,y tile coordinates. This is more computationally expensive but allows for distance calculations without needing to convert to geometries, which can be costly at scale. Depending on the use case and data size, users can choose between CS_Distance (which operates on cell IDs directly) and CS_Distance_Decoded (which operates on pre-decoded tile coordinates).
+-- CREATE OR REPLACE TEMP TABLE trajectory_decoded AS
+-- SELECT
+--     trajectory_id,
+--     cell_z21,
+--     CS_CellIdToTileZXY(cell_z21, 21).x AS x,
+--     CS_CellIdToTileZXY(cell_z21, 21).y AS y
+-- FROM trajectory_cs
