@@ -267,8 +267,8 @@ CREATE OR REPLACE MACRO CS_AsPolygon(cs, zoom) AS (
     )
 );
 
--- CS_IntersectionOverUnion: Calculates the Intersection over Union (IoU) similarity score between a query trajectory and candidate trajectories.
-CREATE OR REPLACE MACRO CS_IoU(cs_a, cs_b) AS TABLE (
+-- CS_Jaccard: Calculates the Jaccard similarity score between a query trajectory and candidate trajectories.
+CREATE OR REPLACE MACRO CS_Jaccard(cs_a, cs_b) AS TABLE (
     WITH intersection_stats AS (
         SELECT
             c.trajectory_id,
