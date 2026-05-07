@@ -26,6 +26,7 @@ DROP MACRO IF EXISTS CS_Distance;
 DROP MACRO IF EXISTS CS_Distance_Decoded;
 DROP MACRO TABLE IF EXISTS CS_KNN;
 DROP MACRO TABLE IF EXISTS CS_KNN_Decoded;
+DROP MACRO TABLE IF EXISTS CS_TrajectorySpatiotemporalZoom;
 
 -- DROP MACRO IF EXISTS quadkey_to_zoomxy;
 -- DROP MACRO IF EXISTS zoomxy_to_quadkey;
@@ -384,3 +385,17 @@ CREATE OR REPLACE MACRO CS_KNN_Decoded(cs_a, cs_b, zoom, k) AS TABLE (
 --     CS_CellIdToTileZXY(cell_z21, 21).x AS x,
 --     CS_CellIdToTileZXY(cell_z21, 21).y AS y
 -- FROM trajectory_cs
+
+CREATE OR REPLACE MACRO CS_TrajectorySpatiotemporalZoom(cs_a, target_z) AS TABLE (
+SELECT 
+   trajectory_id,
+   mmsi,
+   CS_GetParentCellId(cell_z21, 21, target_z) AS parent_cell,
+   MIN(ts_entry) AS parent_entry,
+   MAX(ts_exit) AS parent_exit
+FROM query_table(cs_a)
+GROUP BY 
+   trajectory_id,
+   mmsi,
+   parent_cell
+);
