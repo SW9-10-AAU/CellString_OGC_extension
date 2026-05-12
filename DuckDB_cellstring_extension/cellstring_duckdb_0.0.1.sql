@@ -16,7 +16,7 @@ DROP MACRO IF EXISTS CS_Disjoint;
 DROP MACRO IF EXISTS CS_Coverage;
 DROP MACRO IF EXISTS CS_CellAsPoint;
 DROP MACRO IF EXISTS CS_CellIdToTileZXY;
-DROP MACRO IF EXISTS CS_GetParentCellId;
+DROP MACRO IF EXISTS CS_GetParentCell;
 DROP MACRO IF EXISTS CS_CellAsPolygon;
 DROP MACRO IF EXISTS CS_AsLineString;
 DROP MACRO IF EXISTS CS_AsPolygon;
@@ -111,7 +111,7 @@ CREATE OR REPLACE MACRO CS_CellIdToQuadkey(cell_id, zoom) AS (
 );
 
 -- get the parent cell ID at a coarser zoom level by right-shifting the cell ID's bits according to the zoom difference
-CREATE OR REPLACE MACRO CS_GetParentCellId(cell_id, from_zoom, to_zoom) AS (
+CREATE OR REPLACE MACRO CS_GetParentCell(cell_id, from_zoom, to_zoom) AS (
    CASE
        WHEN to_zoom >= from_zoom THEN
            error(format('parent zoom level must be coarser than source zoom level. Parent zoom: {} not coarser than source zoom: {}', to_zoom, from_zoom))
@@ -390,7 +390,7 @@ CREATE OR REPLACE MACRO CS_TrajectorySpatiotemporalZoom(cs_a, target_z) AS TABLE
 SELECT 
    trajectory_id,
    mmsi,
-   CS_GetParentCellId(cell_z21, 21, target_z) AS parent_cell,
+   CS_GetParentCell(cell_z21, 21, target_z) AS parent_cell,
    MIN(ts_entry) AS parent_entry,
    MAX(ts_exit) AS parent_exit
 FROM query_table(cs_a)
